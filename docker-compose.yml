@@ -1,0 +1,14 @@
+services:
+  pocketbase:
+    build: .
+    ports:
+      - "8091:8090"
+    environment:
+      PB_ADMIN_EMAIL: ${POCKETBASE_ADMIN_EMAIL:-admin@bridge.local}
+      PB_ADMIN_PASSWORD: ${POCKETBASE_ADMIN_PASSWORD:-adminadmin}
+    volumes:
+      - pb_data:/pb/pb_data
+    restart: unless-stopped
+
+volumes:
+  pb_data:

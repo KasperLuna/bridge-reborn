@@ -1,0 +1,18 @@
+# deps
+/node_modules
+
+# next
+/.next
+/out
+
+# env
+.env
+.env.local
+.env.*.local
+
+# pocketbase data
+/pb_data
+
+# misc
+*.log
+.DS_Store

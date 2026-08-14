@@ -1,0 +1,872 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { motion } from "motion/react";
+
+import { AuctionPanel } from "@/components/AuctionPanel";
+import { Hand } from "@/components/Hand";
+import { PlayingCard } from "@/components/PlayingCard";
+import { Scoreboard } from "@/components/Scoreboard";
+import { SeatBadge } from "@/components/SeatBadge";
+import { TrickArea, type TableDir } from "@/components/TrickArea";
+import { Button } from "@/components/ui/Button";
+import { useGameSync } from "@/hooks/useGameSync";
+import { useRoomSync } from "@/hooks/useRoomSync";
+import { sortHand, sortHandByRank } from "@/lib/game/cards";
+import { opponentsOf, partnershipOf, seatOfUsername } from "@/lib/game/seats";
+import type { Card, Seat } from "@/lib/game/types";
+import { resolveRuleset } from "@/lib/rulesets";
+import type { HandResultRecord } from "@/lib/types";
+import { useGameStore } from "@/store/game-store";
+import { useRoomStore } from "@/store/room-store";
+import { useSessionStore } from "@/store/session-store";
+import {
+  allFourReady,
+  auctionEntries,
+  bidTurnSeat,
+  contractShorthand,
+  currentTrick,
+  legalBidsForMe,
+  legalCardsForMe,
+  myCards,
+  players,
+  playTurnSeat,
+  seatAt,
+  trickPlaysFor,
+} from "@/store/selectors";
+
+const DIR_CLASS: Record<TableDir, string> = {
+  top: "left-1/2 top-2 -translate-x-1/2",
+  right: "right-2 top-1/2 -translate-y-1/2",
+  bottom: "left-1/2 bottom-2 -translate-x-1/2",
+  left: "left-2 top-1/2 -translate-y-1/2",
+};
+
+const SEATS: Seat[] = ["N", "E", "S", "W"];
+
+/** Maps a seat to a screen direction so the player's own seat sits at the bottom. */
+function seatDir(seat: Seat, mySeat: Seat | null): TableDir {
+  if (!mySeat) {
+    const base: Record<Seat, TableDir> = {
+      N: "top",
+      E: "right",
+      S: "bottom",
+      W: "left",
+    };
+    return base[seat];
+  }
+  const dir = (SEATS.indexOf(seat) - SEATS.indexOf(mySeat) + 4) % 4;
+  return dir === 0
+    ? "bottom"
+    : dir === 1
+      ? "left"
+      : dir === 2
+        ? "top"
+        : "right";
+}
+
+export default function GamePage() {
+  const params = useParams<{ code: string }>();
+  const router = useRouter();
+
+  const session = useSessionStore((s) => s.session);
+  const init = useSessionStore((s) => s.init);
+  const room = useRoomStore((s) => s.room);
+  const seats = useRoomStore((s) => s.seats);
+  const ready = useRoomStore((s) => s.ready);
+  const claim = useRoomStore((s) => s.claim);
+  const leave = useRoomStore((s) => s.leave);
+
+  const game = useGameStore((s) => s.game);
+  const hand = useGameStore((s) => s.hand);
+  const bids = useGameStore((s) => s.bids);
+  const contract = useGameStore((s) => s.contract);
+  const tricks = useGameStore((s) => s.tricks);
+  const plays = useGameStore((s) => s.plays);
+  const result = useGameStore((s) => s.result);
+  const error = useGameStore((s) => s.error);
+  const pending = useGameStore((s) => s.pending);
+  const bid = useGameStore((s) => s.bid);
+  const play = useGameStore((s) => s.play);
+  const concede = useGameStore((s) => s.concede);
+  const startNewGame = useGameStore((s) => s.startNewGame);
+
+  const [spectatorVisible, setSpectatorVisible] = useState(false);
+  const [handSort, setHandSort] = useState<"suit" | "rank">("suit");
+  const [staged, setStaged] = useState<Card | null>(null);
+  const [playAnim, setPlayAnim] = useState<{
+    card: Card;
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+  } | null>(null);
+  const [inFlight, setInFlight] = useState(false);
+  const [showAuction, setShowAuction] = useState(false);
+  const [wonAnim, setWonAnim] = useState<{
+    trickId: string;
+    winnerSeat: Seat;
+    winnerName: string;
+    phase: "collect" | "fly" | "gone";
+  } | null>(null);
+  const [winnerTarget, setWinnerTarget] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
+  const seatBadgeRefs = useRef<Partial<Record<Seat, HTMLDivElement | null>>>(
+    {},
+  );
+
+  useGameSync(session);
+  useRoomSync(session);
+
+  useEffect(() => {
+    init();
+  }, [init]);
+
+  useEffect(() => {
+    if (!session) {
+      router.replace("/");
+      return;
+    }
+    if (room?.status === "waiting") router.replace(`/room/${session.code}`);
+  }, [session, room?.status, router]);
+
+  // When a trick is won, drive the winner animation: cards flip & fly under
+  // the winner's name, then the middle clears after a 7s countdown.
+  const lastWon = useMemo(
+    () =>
+      [...tricks]
+        .filter((t) => t.winner_username)
+        .sort((a, b) => b.trick_number - a.trick_number)[0] ?? null,
+    [tricks],
+  );
+
+  useEffect(() => {
+    if (!game || !lastWon) {
+      // Nothing to animate (e.g. a new game just started and tricks cleared).
+      setWonAnim(null);
+      return;
+    }
+    const ws = seatOfUsername(players(game), lastWon.winner_username);
+    const name = ws ? players(game)[ws] : null;
+    if (!ws || !name) return;
+    setWonAnim({
+      trickId: lastWon.id,
+      winnerSeat: ws,
+      winnerName: name,
+      phase: "collect",
+    });
+    // Cards hold on the table through the 7s countdown, then fly to the winner.
+    const t = setTimeout(() => {
+      setWonAnim((prev) =>
+        prev && prev.trickId === lastWon.id ? { ...prev, phase: "fly" } : prev,
+      );
+    }, 7000);
+    return () => clearTimeout(t);
+  }, [game, lastWon]);
+
+  // Point the trick cards at the winner's seat badge so they fly underneath it.
+  useEffect(() => {
+    if (!wonAnim || wonAnim.phase !== "fly" || !wonAnim.winnerSeat) {
+      setWinnerTarget(null);
+      return;
+    }
+    const el = seatBadgeRefs.current[wonAnim.winnerSeat];
+    if (!el) {
+      setWinnerTarget(null);
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    setWinnerTarget({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+  }, [wonAnim]);
+
+  // Keep the play overlay until the server records the card, then let the
+  // trick slot take over (the card stays out of the hand via playedByMe).
+  useEffect(() => {
+    if (!inFlight || !playAnim) return;
+    const recorded = plays.some(
+      (pl) => pl.username === session?.username && pl.card === playAnim.card,
+    );
+    if (recorded) {
+      setInFlight(false);
+      setPlayAnim(null);
+    }
+  }, [plays, inFlight, playAnim, session?.username]);
+
+  // If a play fails, let the card return to the hand.
+  useEffect(() => {
+    if (!error) return;
+    setInFlight(false);
+    setPlayAnim(null);
+  }, [error]);
+
+  const ruleset = useMemo(() => resolveRuleset(room?.ruleset), [room?.ruleset]);
+
+  if (!session) return null;
+  if (!game || !hand || !ruleset) {
+    return (
+      <main className="grid min-h-dvh place-items-center text-cream-dim">
+        Loading table…
+      </main>
+    );
+  }
+
+  const p = players(game);
+  const mySeat = session.seat as Seat | null;
+  const myUsername = session.username;
+  const handOver = !!hand.ended_at;
+  const phase = contract ? "play" : "auction";
+
+  const auction = auctionEntries(bids, game);
+  const bidTurn = bidTurnSeat(bids, hand, ruleset);
+  const myBidInfo = mySeat
+    ? legalBidsForMe(bids, game, hand, ruleset, mySeat)
+    : null;
+  const myBidTurn = myBidInfo?.myTurn ?? false;
+
+  const declarerSeat = contract
+    ? seatOfUsername(p, contract.declarer_username)
+    : null;
+  const playTurn = playTurnSeat(tricks, plays, p, declarerSeat);
+  const myPlayTurn = !session.isSpectator && mySeat === playTurn && !handOver;
+  const myLegal = mySeat
+    ? legalCardsForMe(hand, mySeat, myUsername, plays, tricks, ruleset)
+    : [];
+  const rawHand = mySeat ? (hand.deal[mySeat] ?? []) : [];
+  const myHand =
+    handSort === "suit" ? sortHand(rawHand) : sortHandByRank(rawHand);
+  // Cards I've already played leave the fan (server keeps them in deal, so
+  // derive played cards from the plays list instead).
+  const playedByMe = new Set(
+    plays.filter((pl) => pl.username === myUsername).map((pl) => pl.card),
+  );
+  const handCards = myHand.filter((c) => !playedByMe.has(c));
+  const hiddenCards = playAnim ? [playAnim.card] : [];
+  const trumpSuit =
+    contract && contract.strain !== "NT" ? contract.strain : null;
+
+  // Show the open trick, or the most recent won trick while it's being
+  // collected (flip/fly under the winner) — the middle clears after 7s.
+  const openTrick = currentTrick(tricks);
+  const displayTrick =
+    openTrick ??
+    (wonAnim && wonAnim.phase !== "gone"
+      ? (tricks.find((t) => t.id === wonAnim.trickId) ?? null)
+      : null);
+  const trickCards = displayTrick
+    ? trickPlaysFor(displayTrick.id, plays).map((pl) => ({
+        card: pl.card,
+        seat: seatOfUsername(p, pl.username) ?? "N",
+      }))
+    : [];
+  const winnerSeat = displayTrick?.winner_username
+    ? seatOfUsername(p, displayTrick.winner_username)
+    : null;
+  const winnerToast =
+    wonAnim &&
+    wonAnim.phase !== "gone" &&
+    !openTrick &&
+    tricks.some((t) => t.id === wonAnim.trickId)
+      ? wonAnim.winnerName
+      : null;
+
+  // Trick progress for both teams, shown in the header. The declared side
+  // needs `level + 6` tricks to make the contract; the other side needs the
+  // remaining tricks (plus one) to set it.
+  const declarerSide = declarerSeat ? partnershipOf(declarerSeat) : null;
+
+  let nsTricks = 0;
+  let ewTricks = 0;
+  for (const t of tricks) {
+    if (!t.winner_username) continue;
+    const ws = seatOfUsername(p, t.winner_username);
+    if (!ws) continue;
+    if (partnershipOf(ws) === "NS") nsTricks++;
+    else ewTricks++;
+  }
+
+  const tricksToMake = contract ? Number(contract.level) + 6 : null;
+  const tricksToSet = contract ? 8 - Number(contract.level) : null;
+  const nsNeeded = declarerSide === "NS" ? tricksToMake : tricksToSet;
+  const ewNeeded = declarerSide === "EW" ? tricksToMake : tricksToSet;
+
+  // Who won this hand: the declarer side if they made the contract, otherwise
+  // the defending side. Drives the celebratory names on the hand-end screen.
+  const resultWinnerSide =
+    result && declarerSide
+      ? result.result_delta >= 0
+        ? declarerSide
+        : opponentsOf(declarerSide)
+      : null;
+  const handWinnerNames: [string, string] | null = resultWinnerSide
+    ? resultWinnerSide === "NS"
+      ? [p.N, p.S]
+      : [p.E, p.W]
+    : null;
+
+  // All four hands, for the win dialog's inspect view.
+  const inspectHands = SEATS.map((seat) => ({
+    seat,
+    username: p[seat],
+    cards: myCards(hand, seat),
+  }));
+
+  const dirs = SEATS.reduce(
+    (acc, s) => {
+      acc[s] = seatDir(s, mySeat);
+      return acc;
+    },
+    {} as Record<Seat, TableDir>,
+  );
+
+  const activeSeat = !handOver && (phase === "auction" ? bidTurn : playTurn);
+
+  function handleCardClick(card: Card) {
+    if (playAnim) return;
+    if (staged === card) {
+      setStaged(null);
+      return;
+    }
+    setStaged(card);
+  }
+
+  function finishPlay(card: Card) {
+    setStaged(null);
+    setInFlight(true);
+    void play(card);
+  }
+
+  function confirmPlay() {
+    if (!staged) return;
+    const fromEl = document.querySelector<HTMLElement>(
+      `[data-hand-card="${staged}"]`,
+    );
+    const toEl = document.querySelector<HTMLElement>(
+      `[data-trick-slot="${mySeat}"]`,
+    );
+    const from = fromEl?.getBoundingClientRect();
+    const to = toEl?.getBoundingClientRect();
+    if (from && to) {
+      setPlayAnim({
+        card: staged,
+        from: { x: from.left, y: from.top },
+        to: { x: to.left, y: to.top },
+      });
+      setStaged(null);
+    } else {
+      finishPlay(staged);
+    }
+  }
+
+  function handleSpectate() {
+    void claim(null).catch((err) =>
+      useGameStore
+        .getState()
+        .setError(err instanceof Error ? err.message : "Failed to spectate"),
+    );
+  }
+
+  function handleLeave() {
+    void leave()
+      .then(() => router.replace("/"))
+      .catch((err) =>
+        useGameStore
+          .getState()
+          .setError(err instanceof Error ? err.message : "Failed to leave"),
+      );
+  }
+
+  return (
+    <main className="flex min-h-dvh flex-col">
+      <header className="flex flex-wrap items-center justify-between gap-3 p-4">
+        <div className="text-sm text-cream-dim">
+          <span className="mr-2 rounded-lg bg-cream/5 px-2 py-1 font-mono tracking-widest">
+            {params.code}
+          </span>
+          <span className="hidden sm:inline">· {ruleset.name}</span>
+        </div>
+        <Scoreboard
+          contract={contractShorthand(contract)}
+          vulnerability={hand.vulnerability}
+          nsTricks={nsTricks}
+          ewTricks={ewTricks}
+          nsNeeded={nsNeeded}
+          ewNeeded={ewNeeded}
+          onContractClick={() => setShowAuction(true)}
+        />
+        <Button
+          variant="ghost"
+          onClick={() => void concede("concede")}
+          disabled={handOver || pending}
+        >
+          Concede
+        </Button>
+      </header>
+
+      <div className="felt relative mx-auto aspect-square w-full max-w-2xl grow rounded-[2rem]">
+        {SEATS.map((seat) => {
+          const rec = seatAt(seats, seat);
+          return (
+            <div
+              key={seat}
+              ref={(el) => {
+                seatBadgeRefs.current[seat] = el;
+              }}
+              data-seat-badge={seat}
+              className={`absolute z-20 ${DIR_CLASS[dirs[seat]]}`}
+            >
+              <SeatBadge
+                seat={seat}
+                username={rec?.username ?? p[seat] ?? null}
+                active={activeSeat === seat}
+                winner={winnerSeat === seat}
+                isMe={seat === mySeat}
+              />
+            </div>
+          );
+        })}
+
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+          {phase === "auction" ? (
+            myBidTurn && !handOver ? (
+              <AuctionPanel
+                entries={auction}
+                legal={myBidInfo!}
+                myTurn
+                disabled={pending}
+                onCall={(call) => void bid(call)}
+              />
+            ) : (
+              <div className="rounded-2xl border border-cream/10 bg-felt-deep/70 p-5 text-center backdrop-blur">
+                <p className="font-display text-lg text-cream">
+                  {handOver
+                    ? "Auction over"
+                    : `Waiting on ${p[bidTurn ?? "N"]}`}
+                </p>
+                <p className="mt-1 text-xs tracking-[0.3em] text-cream-dim/60 uppercase">
+                  auction
+                </p>
+              </div>
+            )
+          ) : (
+            <TrickArea
+              cards={trickCards}
+              winner={winnerSeat}
+              positions={dirs}
+              trumpSuit={trumpSuit}
+              collecting={
+                !!(wonAnim && wonAnim.phase === "collect" && !openTrick)
+              }
+              won={!!(wonAnim && wonAnim.phase === "fly" && !openTrick)}
+              winnerTarget={winnerTarget}
+              onCollected={() =>
+                setWonAnim((prev) =>
+                  prev && prev.phase === "fly"
+                    ? { ...prev, phase: "gone" }
+                    : prev,
+                )
+              }
+            />
+          )}
+        </div>
+
+        {winnerToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="pointer-events-none absolute top-16 left-1/2 z-30 -translate-x-1/2 rounded-full bg-lime px-5 py-2 font-semibold whitespace-nowrap text-ink shadow-[0_0_30px_-6px_rgb(186_255_61/60%)]"
+          >
+            {winnerToast} wins the trick
+          </motion.div>
+        )}
+      </div>
+
+      <footer className="px-4 pt-2 pb-4">
+        {error && (
+          <p className="mb-2 text-center text-sm text-danger">{error}</p>
+        )}
+
+        {session.isSpectator ? (
+          <div className="flex flex-col items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => setSpectatorVisible((v) => !v)}
+            >
+              {spectatorVisible ? "Hide all hands" : "Reveal all hands"}
+            </Button>
+            {spectatorVisible && (
+              <div className="grid w-full max-w-4xl grid-cols-2 gap-2 sm:grid-cols-4">
+                {SEATS.map((seat) => (
+                  <div key={seat} className="rounded-xl bg-cream/5 p-2">
+                    <p className="mb-1 text-center text-xs text-cream-dim">
+                      {seat} · {p[seat]}
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-1">
+                      {myCards(hand, seat).map((card) => (
+                        <PlayingCard
+                          key={card}
+                          card={card}
+                          size="xs"
+                          playable={false}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : !handOver ? (
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-1 flex items-center justify-center gap-1">
+              <span className="mr-1 text-[10px] tracking-[0.25em] text-cream-dim/60 uppercase">
+                Sort
+              </span>
+              <button
+                type="button"
+                onClick={() => setHandSort("suit")}
+                className={`rounded-md px-2 py-0.5 text-xs font-semibold transition-colors ${
+                  handSort === "suit"
+                    ? "bg-lime/15 text-lime"
+                    : "text-cream-dim hover:text-cream"
+                }`}
+              >
+                Suit
+              </button>
+              <button
+                type="button"
+                onClick={() => setHandSort("rank")}
+                className={`rounded-md px-2 py-0.5 text-xs font-semibold transition-colors ${
+                  handSort === "rank"
+                    ? "bg-lime/15 text-lime"
+                    : "text-cream-dim hover:text-cream"
+                }`}
+              >
+                Rank
+              </button>
+              {phase === "play" && trumpSuit && (
+                <span className="ml-2 text-[10px] tracking-[0.2em] text-lime/70 uppercase">
+                  Trump {trumpSuit}
+                </span>
+              )}
+            </div>
+            {staged && (
+              <div className="mb-2 flex items-center justify-center gap-2">
+                <span className="text-sm text-cream">Play {staged}?</span>
+                <Button onClick={confirmPlay} disabled={!!playAnim}>
+                  Play
+                </Button>
+                <Button variant="ghost" onClick={() => setStaged(null)}>
+                  Cancel
+                </Button>
+              </div>
+            )}
+            {phase === "auction" ? (
+              <Hand cards={handCards} hiddenCards={hiddenCards} size="md" />
+            ) : (
+              <Hand
+                cards={handCards}
+                playable={myPlayTurn ? myLegal : []}
+                trumpSuit={trumpSuit}
+                staged={staged}
+                hiddenCards={hiddenCards}
+                onPlay={myPlayTurn ? handleCardClick : undefined}
+                size="md"
+              />
+            )}
+          </div>
+        ) : null}
+      </footer>
+
+      {playAnim && (
+        <motion.div
+          className="pointer-events-none fixed z-[80]"
+          initial={{ left: playAnim.from.x, top: playAnim.from.y }}
+          animate={{ left: playAnim.to.x, top: playAnim.to.y }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
+          onAnimationComplete={() => {
+            if (!inFlight) finishPlay(playAnim.card);
+          }}
+        >
+          <PlayingCard card={playAnim.card} size="sm" />
+        </motion.div>
+      )}
+
+      {showAuction && (
+        <AuctionHistoryModal
+          entries={auction}
+          onClose={() => setShowAuction(false)}
+        />
+      )}
+
+      {handOver && (
+        <HandOverOverlay
+          result={result}
+          contractShorthand={contractShorthand(contract)}
+          nsScore={game.ns_total_score}
+          ewScore={game.ew_total_score}
+          nsTricks={nsTricks}
+          ewTricks={ewTricks}
+          hands={inspectHands}
+          winnerSide={game.winner_side || null}
+          winnerNames={
+            game.winner_side === "NS"
+              ? [p.N, p.S]
+              : game.winner_side === "EW"
+                ? [p.E, p.W]
+                : null
+          }
+          handWinnerNames={handWinnerNames}
+          endReason={game.end_reason || null}
+          isNorth={mySeat === "N"}
+          isSeated={!session.isSpectator}
+          allReady={allFourReady(seats)}
+          myReady={!!seats.find((s) => s.id === session.seatId)?.ready}
+          onReady={(v) => void ready(v)}
+          onNext={() => void startNewGame()}
+          onSpectate={handleSpectate}
+          onLeave={handleLeave}
+        />
+      )}
+    </main>
+  );
+}
+
+function AuctionHistoryModal({
+  entries,
+  onClose,
+}: {
+  entries: { call: string; username: string; side: "NS" | "EW" }[];
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-ink/80 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="felt w-full max-w-sm rounded-3xl p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="font-display text-2xl font-bold text-cream">Auction</h3>
+        <ul className="mt-4 flex flex-col gap-1.5">
+          {entries.length === 0 && (
+            <li className="text-sm text-cream-dim">No bids yet.</li>
+          )}
+          {entries.map((e, i) => (
+            <li key={i} className="flex items-center justify-between text-sm">
+              <span className="text-cream">{e.username}</span>
+              <span
+                className={`rounded-md px-2 py-0.5 font-semibold ${
+                  e.call === "P"
+                    ? "bg-cream/5 text-cream-dim"
+                    : e.call === "X" || e.call === "XX"
+                      ? "bg-danger/15 text-danger"
+                      : "bg-lime/15 text-lime"
+                }`}
+              >
+                {e.call}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <Button className="mt-5 w-full" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function HandOverOverlay({
+  result,
+  contractShorthand,
+  nsScore,
+  ewScore,
+  nsTricks,
+  ewTricks,
+  hands,
+  winnerSide,
+  winnerNames,
+  handWinnerNames,
+  endReason,
+  isNorth,
+  isSeated,
+  allReady,
+  myReady,
+  onReady,
+  onNext,
+  onSpectate,
+  onLeave,
+}: {
+  result: HandResultRecord | null;
+  contractShorthand: string;
+  nsScore: number;
+  ewScore: number;
+  /** Tricks won by each partnership in the just-finished hand. */
+  nsTricks: number;
+  ewTricks: number;
+  /** All four hands, shown in the inspect view. */
+  hands: { seat: Seat; username: string; cards: Card[] }[];
+  winnerSide: string | null;
+  /** Players on the winning side (game over), used for the celebratory heading. */
+  winnerNames: [string, string] | null;
+  /** Players on the side that won the just-finished hand. */
+  handWinnerNames: [string, string] | null;
+  endReason: string | null;
+  isNorth: boolean;
+  isSeated: boolean;
+  allReady: boolean;
+  myReady: boolean;
+  onReady: (ready: boolean) => void;
+  onNext: () => void;
+  onSpectate: () => void;
+  onLeave: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [inspect, setInspect] = useState(false);
+
+  async function act(fn: () => Promise<void> | void) {
+    setBusy(true);
+    try {
+      await fn();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-ink/80 p-4 backdrop-blur-sm">
+      <div className="felt w-full max-w-sm rounded-3xl p-6 text-center">
+        {inspect ? (
+          <>
+            <p className="text-xs tracking-[0.3em] text-lime/70 uppercase">
+              All hands
+            </p>
+            <div className="mt-4 grid max-h-[55vh] grid-cols-2 gap-2 overflow-y-auto">
+              {hands.map((h) => (
+                <div key={h.seat} className="rounded-xl bg-cream/5 p-2">
+                  <p className="mb-1 text-center text-xs text-cream-dim">
+                    {h.seat} · {h.username}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-1">
+                    {h.cards.map((card) => (
+                      <PlayingCard
+                        key={card}
+                        card={card}
+                        size="xs"
+                        playable={false}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button
+              className="mt-4 w-full"
+              variant="ghost"
+              onClick={() => setInspect(false)}
+            >
+              Back
+            </Button>
+          </>
+        ) : (
+          <>
+            {winnerSide ? (
+              <>
+                <p className="text-xs tracking-[0.3em] text-lime/70 uppercase">
+                  Game over
+                </p>
+                <h2 className="mt-2 font-display text-4xl font-black text-cream">
+                  {winnerNames?.filter(Boolean).join(" & ") ||
+                    `${winnerSide} win`}
+                </h2>
+                <p className="mt-1 text-sm text-cream-dim">
+                  {winnerSide} win
+                  {endReason === "concede"
+                    ? " · by concession"
+                    : " · opponent left"}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-xs tracking-[0.3em] text-lime/70 uppercase">
+                  Hand over
+                </p>
+                <h2 className="mt-2 font-display text-3xl font-black text-cream">
+                  {result
+                    ? `${contractShorthand} ${result.result_delta >= 0 ? "+" : ""}${result.result_delta}`
+                    : "Passed out"}
+                </h2>
+                {handWinnerNames?.some(Boolean) && (
+                  <p className="mt-2 font-display text-xl font-bold text-lime">
+                    {handWinnerNames.filter(Boolean).join(" & ")} win
+                  </p>
+                )}
+                <div className="mt-4 flex justify-center gap-6 text-sm">
+                  <span className="text-cream-dim">
+                    NS{" "}
+                    <span className="font-display text-lg text-cream">
+                      {nsScore}
+                    </span>{" "}
+                    <span className="text-xs">· {nsTricks} tricks</span>
+                  </span>
+                  <span className="text-cream-dim">
+                    EW{" "}
+                    <span className="font-display text-lg text-cream">
+                      {ewScore}
+                    </span>{" "}
+                    <span className="text-xs">· {ewTricks} tricks</span>
+                  </span>
+                </div>
+              </>
+            )}
+
+            {isSeated && !winnerSide && (
+              <div className="mt-6 flex flex-col gap-2">
+                <Button
+                  variant={myReady ? "primary" : "ghost"}
+                  onClick={() => onReady(!myReady)}
+                >
+                  {myReady ? "Ready ✓" : "Ready for next"}
+                </Button>
+                {isNorth && (
+                  <Button disabled={!allReady} onClick={onNext}>
+                    {allReady ? "Deal next hand" : "Waiting for players"}
+                  </Button>
+                )}
+              </div>
+            )}
+
+            <div className="mt-4 flex justify-center gap-2">
+              {isSeated && !winnerSide && (
+                <Button
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() => void act(onSpectate)}
+                >
+                  Spectate
+                </Button>
+              )}
+              <Button
+                variant="danger"
+                disabled={busy}
+                onClick={() => void act(onLeave)}
+              >
+                Leave room
+              </Button>
+            </div>
+
+            <Button
+              className="mt-2 w-full"
+              variant="ghost"
+              onClick={() => setInspect(true)}
+            >
+              Inspect hands
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,32 @@
+{
+  "id": "standard-bridge",
+  "name": "Standard Duplicate Bridge",
+  "openerRule": "leftOfDealer",
+  "bidding": {
+    "doubleAllowed": true,
+    "redoubleAllowed": true
+  },
+  "dealerRotation": "rotate",
+  "vulnerabilityCycle": ["none", "ns", "ew", "both"],
+  "scoring": {
+    "minorTrick": 20,
+    "majorTrick": 30,
+    "ntTrick": 30,
+    "ntFirstTrickBonus": 10,
+    "partScoreBonus": 50,
+    "gameBonus": { "vuln": 500, "non": 300 },
+    "slamBonus": {
+      "small": { "vuln": 750, "non": 500 },
+      "grand": { "vuln": 1500, "non": 1000 }
+    },
+    "insultBonus": { "doubled": 50, "redoubled": 100 },
+    "undertrick": {
+      "undoubled": { "vuln": 100, "non": 50 },
+      "doubled": { "vuln": [200, 300, 300], "non": [100, 200, 200] }
+    }
+  },
+  "play": {
+    "mustFollowSuit": true,
+    "endHandEarly": false
+  }
+}

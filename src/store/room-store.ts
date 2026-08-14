@@ -1,0 +1,73 @@
+"use client";
+
+import { create } from "zustand";
+
+import * as api from "@/lib/api";
+import type { Seat } from "@/lib/game/types";
+import type { Room, RoomSeat } from "@/lib/types";
+
+import { useSessionStore } from "./session-store";
+
+type RoomState = {
+  room: Room | null;
+  seats: RoomSeat[];
+  loading: boolean;
+  error: string | null;
+  setRoom: (room: Room | null) => void;
+  setSeats: (seats: RoomSeat[]) => void;
+  setLoading: (loading: boolean) => void;
+  setError: (error: string | null) => void;
+  reset: () => void;
+  claim: (seat: Seat | null) => Promise<void>;
+  leave: () => Promise<void>;
+  ready: (ready: boolean) => Promise<void>;
+  changeRuleset: (presetId: string) => Promise<void>;
+  start: () => Promise<void>;
+};
+
+function requireSession() {
+  const session = useSessionStore.getState().session;
+  if (!session) throw new Error("No session");
+  return session;
+}
+
+export const useRoomStore = create<RoomState>((set) => ({
+  room: null,
+  seats: [],
+  loading: false,
+  error: null,
+
+  setRoom: (room) => set({ room }),
+  setSeats: (seats) => set({ seats }),
+  setLoading: (loading) => set({ loading }),
+  setError: (error) => set({ error }),
+  reset: () => set({ room: null, seats: [], loading: false, error: null }),
+
+  claim: async (seat) => {
+    const session = requireSession();
+    const result = await api.claimSeat(session, seat);
+    useSessionStore.getState().set({
+      ...session,
+      seat: result.seat,
+      isSpectator: result.isSpectator,
+    });
+  },
+
+  leave: async () => {
+    const session = requireSession();
+    await api.leaveSeat(session);
+    useSessionStore.getState().clear();
+  },
+
+  ready: async (ready) => {
+    await api.setReady(requireSession(), ready);
+  },
+
+  changeRuleset: async (presetId) => {
+    await api.setRuleset(requireSession(), presetId);
+  },
+
+  start: async () => {
+    await api.startGame(requireSession());
+  },
+}));
