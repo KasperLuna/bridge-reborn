@@ -62,9 +62,10 @@ export function TrickArea({
   const bySeat = new Map(cards.map((c) => [c.seat, c.card]));
   const containerRef = useRef<HTMLDivElement>(null);
   const collectedRef = useRef(false);
-  const [flyTo, setFlyTo] = useState<Record<Seat, { x: number; y: number }> | null>(
-    null,
-  );
+  const [flyTo, setFlyTo] = useState<Record<
+    Seat,
+    { x: number; y: number }
+  > | null>(null);
 
   // After the countdown (collecting), fly every card (flipping over) under the
   // winner's name badge. Only recompute when the won-state or target changes.
@@ -94,7 +95,8 @@ export function TrickArea({
         const target = flyTo?.[seat];
         // Trump cards played in the trick get a halo that scales with rank —
         // higher trump outshines lower.
-        const isTrump = !!card && trumpSuit !== null && cardSuit(card) === trumpSuit;
+        const isTrump =
+          !!card && trumpSuit !== null && cardSuit(card) === trumpSuit;
         const tIdx = isTrump ? rankIndex(cardRank(card!)) : 0;
         const halo = isTrump
           ? `0 0 ${14 + tIdx * 2.2}px ${3 + tIdx * 1.2}px rgb(186 255 61 / ${(0.45 + tIdx * 0.03).toFixed(3)})`
