@@ -1,4 +1,22 @@
 services:
+  bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile.next
+      args:
+        # Inlined into the client bundle at build time — must be browser-reachable.
+        NEXT_PUBLIC_POCKETBASE_URL: ${NEXT_PUBLIC_POCKETBASE_URL:?set NEXT_PUBLIC_POCKETBASE_URL in .env}
+    ports:
+      - "3000:3000"
+    environment:
+      # Server-side PB calls: use the compose network (no host publish needed).
+      POCKETBASE_URL: ${POCKETBASE_URL:-http://pocketbase:8090}
+      POCKETBASE_ADMIN_EMAIL: ${POCKETBASE_ADMIN_EMAIL:-admin@bridge.local}
+      POCKETBASE_ADMIN_PASSWORD: ${POCKETBASE_ADMIN_PASSWORD:-adminadmin}
+    depends_on:
+      - pocketbase
+    restart: unless-stopped
+
   pocketbase:
     build: .
     ports:

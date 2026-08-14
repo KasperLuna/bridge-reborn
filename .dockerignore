@@ -3,3 +3,5 @@ node_modules
 pb_data
 .git
 *.log
+.env*
+pb_migrations
