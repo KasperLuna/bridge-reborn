@@ -36,12 +36,26 @@ import {
   trickPlaysFor,
 } from "@/store/selectors";
 
-const DIR_CLASS: Record<TableDir, string> = {
-  top: "left-1/2 top-2 -translate-x-1/2",
-  right: "right-2 top-1/2 -translate-y-1/2",
-  bottom: "left-1/2 bottom-2 -translate-x-1/2",
-  left: "left-2 top-1/2 -translate-y-1/2",
-};
+/**
+ * Seat badge placement. E/W normally sit at the mid-sides, right next to their
+ * trick-card slots. During the auction the centered bid panel occupies the felt
+ * (it's near table-sized on smaller viewports), so they tuck into the top
+ * corners on every breakpoint to stay clear of it.
+ */
+function badgeClass(dir: TableDir, auction: boolean): string {
+  switch (dir) {
+    case "top":
+      return "left-1/2 top-2 -translate-x-1/2";
+    case "bottom":
+      return "bottom-2 left-1/2 -translate-x-1/2";
+    case "right":
+      return auction ? "top-2 right-2" : "right-2 top-1/2 -translate-y-1/2";
+    case "left":
+      return auction ? "top-2 left-2" : "left-2 top-1/2 -translate-y-1/2";
+    default:
+      return "";
+  }
+}
 
 const SEATS: Seat[] = ["N", "E", "S", "W"];
 
@@ -102,6 +116,7 @@ export default function GamePage() {
   } | null>(null);
   const [inFlight, setInFlight] = useState(false);
   const [showAuction, setShowAuction] = useState(false);
+  const [confirmConcede, setConfirmConcede] = useState(false);
   const [wonAnim, setWonAnim] = useState<{
     trickId: string;
     winnerSeat: Seat;
@@ -223,6 +238,21 @@ export default function GamePage() {
     ? legalBidsForMe(bids, game, hand, ruleset, mySeat)
     : null;
   const myBidTurn = myBidInfo?.myTurn ?? false;
+
+  // The full bid panel sits in the felt center on sm+, but on phones it docks
+  // in the footer (below the table) so it can't overlap the seat badges and
+  // takes the space the hand would otherwise use. Rendered in both spots, one
+  // hidden per breakpoint.
+  const auctionPanel =
+    myBidTurn && !handOver ? (
+      <AuctionPanel
+        entries={auction}
+        legal={myBidInfo!}
+        myTurn
+        disabled={pending}
+        onCall={(call) => void bid(call)}
+      />
+    ) : null;
 
   const declarerSeat = contract
     ? seatOfUsername(p, contract.declarer_username)
@@ -377,8 +407,8 @@ export default function GamePage() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col">
-      <header className="flex flex-wrap items-center justify-between gap-3 p-4">
+    <main className="flex h-dvh flex-col overflow-hidden">
+      <header className="flex flex-wrap items-center justify-between gap-2 p-3 sm:gap-3 sm:p-4">
         <div className="text-sm text-cream-dim">
           <span className="mr-2 rounded-lg bg-cream/5 px-2 py-1 font-mono tracking-widest">
             {params.code}
@@ -396,92 +426,109 @@ export default function GamePage() {
         />
         <Button
           variant="ghost"
-          onClick={() => void concede("concede")}
+          onClick={() => setConfirmConcede(true)}
           disabled={handOver || pending}
         >
           Concede
         </Button>
       </header>
 
-      <div className="felt relative mx-auto aspect-square w-full max-w-2xl grow rounded-[2rem]">
-        {SEATS.map((seat) => {
-          const rec = seatAt(seats, seat);
-          return (
-            <div
-              key={seat}
-              ref={(el) => {
-                seatBadgeRefs.current[seat] = el;
-              }}
-              data-seat-badge={seat}
-              className={`absolute z-20 ${DIR_CLASS[dirs[seat]]}`}
-            >
-              <SeatBadge
-                seat={seat}
-                username={rec?.username ?? p[seat] ?? null}
-                active={activeSeat === seat}
-                winner={winnerSeat === seat}
-                isMe={seat === mySeat}
-              />
-            </div>
-          );
-        })}
-
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-          {phase === "auction" ? (
-            myBidTurn && !handOver ? (
-              <AuctionPanel
-                entries={auction}
-                legal={myBidInfo!}
-                myTurn
-                disabled={pending}
-                onCall={(call) => void bid(call)}
-              />
-            ) : (
-              <div className="rounded-2xl border border-cream/10 bg-felt-deep/70 p-5 text-center backdrop-blur">
-                <p className="font-display text-lg text-cream">
-                  {handOver
-                    ? "Auction over"
-                    : `Waiting on ${p[bidTurn ?? "N"]}`}
-                </p>
-                <p className="mt-1 text-xs tracking-[0.3em] text-cream-dim/60 uppercase">
-                  auction
-                </p>
+      <div className="relative mx-auto flex min-h-0 w-full max-w-2xl flex-1 items-center justify-center px-3 sm:px-4">
+        <div
+          className={`felt relative w-full rounded-4xl sm:aspect-square sm:h-full sm:w-auto sm:max-w-full ${
+            phase === "auction" && auctionPanel
+              ? "h-full"
+              : "aspect-square max-h-full sm:max-h-none"
+          }`}
+        >
+          {SEATS.map((seat) => {
+            const rec = seatAt(seats, seat);
+            return (
+              <div
+                key={seat}
+                ref={(el) => {
+                  seatBadgeRefs.current[seat] = el;
+                }}
+                data-seat-badge={seat}
+                className={`absolute z-20 ${badgeClass(
+                  dirs[seat],
+                  phase === "auction",
+                )}`}
+              >
+                <SeatBadge
+                  seat={seat}
+                  username={rec?.username ?? p[seat] ?? null}
+                  active={activeSeat === seat}
+                  winner={winnerSeat === seat}
+                  isMe={seat === mySeat}
+                />
               </div>
-            )
-          ) : (
-            <TrickArea
-              cards={trickCards}
-              winner={winnerSeat}
-              positions={dirs}
-              trumpSuit={trumpSuit}
-              collecting={
-                !!(wonAnim && wonAnim.phase === "collect" && !openTrick)
-              }
-              won={!!(wonAnim && wonAnim.phase === "fly" && !openTrick)}
-              winnerTarget={winnerTarget}
-              onCollected={() =>
-                setWonAnim((prev) =>
-                  prev && prev.phase === "fly"
-                    ? { ...prev, phase: "gone" }
-                    : prev,
-                )
-              }
-            />
+            );
+          })}
+
+          {/* Mobile: the bid panel sits centered in the felt (between the badge
+              strips), stretching to use the play-area whitespace. */}
+          {phase === "auction" && auctionPanel && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center px-3 py-14 sm:hidden">
+              <div className="max-h-full w-full overflow-y-auto">
+                {auctionPanel}
+              </div>
+            </div>
+          )}
+
+          <div className="absolute inset-0 flex items-center justify-center">
+            {phase === "auction" ? (
+              auctionPanel ? (
+                <div className="hidden h-full max-h-[calc(100%-7rem)] sm:block">
+                  {auctionPanel}
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-cream/10 bg-felt-deep/70 p-5 text-center backdrop-blur">
+                  <p className="font-display text-lg text-cream">
+                    {handOver
+                      ? "Auction over"
+                      : `Waiting on ${p[bidTurn ?? "N"]}`}
+                  </p>
+                  <p className="mt-1 text-xs tracking-[0.3em] text-cream-dim/60 uppercase">
+                    auction
+                  </p>
+                </div>
+              )
+            ) : (
+              <TrickArea
+                cards={trickCards}
+                winner={winnerSeat}
+                positions={dirs}
+                trumpSuit={trumpSuit}
+                collecting={
+                  !!(wonAnim && wonAnim.phase === "collect" && !openTrick)
+                }
+                won={!!(wonAnim && wonAnim.phase === "fly" && !openTrick)}
+                winnerTarget={winnerTarget}
+                onCollected={() =>
+                  setWonAnim((prev) =>
+                    prev && prev.phase === "fly"
+                      ? { ...prev, phase: "gone" }
+                      : prev,
+                  )
+                }
+              />
+            )}
+          </div>
+
+          {winnerToast && (
+            <motion.div
+              initial={{ opacity: 0, y: -12 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="pointer-events-none absolute top-16 left-1/2 z-30 -translate-x-1/2 rounded-full bg-lime px-5 py-2 font-semibold whitespace-nowrap text-ink shadow-[0_0_30px_-6px_rgb(186_255_61/60%)]"
+            >
+              {winnerToast} wins the trick
+            </motion.div>
           )}
         </div>
-
-        {winnerToast && (
-          <motion.div
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="pointer-events-none absolute top-16 left-1/2 z-30 -translate-x-1/2 rounded-full bg-lime px-5 py-2 font-semibold whitespace-nowrap text-ink shadow-[0_0_30px_-6px_rgb(186_255_61/60%)]"
-          >
-            {winnerToast} wins the trick
-          </motion.div>
-        )}
       </div>
 
-      <footer className="px-4 pt-2 pb-4">
+      <footer className="px-3 pt-2 pb-3 sm:px-4 sm:pb-4">
         {error && (
           <p className="mb-2 text-center text-sm text-danger">{error}</p>
         )}
@@ -550,19 +597,33 @@ export default function GamePage() {
                 </span>
               )}
             </div>
-            {staged && (
-              <div className="mb-2 flex items-center justify-center gap-2">
-                <span className="text-sm text-cream">Play {staged}?</span>
-                <Button onClick={confirmPlay} disabled={!!playAnim}>
-                  Play
-                </Button>
-                <Button variant="ghost" onClick={() => setStaged(null)}>
-                  Cancel
-                </Button>
+            {/* Reserve the confirm row's height so staging a card never shifts
+                the layout. If it did, the play-animation target (captured while
+                staged) would be stale once the row clears, making the flying
+                card land above the real slot. Only during play — the auction
+                keeps that space so the bid panel fits above the seat badges. */}
+            {phase === "play" && (
+              <div className="mb-2 flex h-11 items-center justify-center gap-2">
+                {staged && (
+                  <>
+                    <span className="text-sm text-cream">Play {staged}?</span>
+                    <Button onClick={confirmPlay} disabled={!!playAnim}>
+                      Play
+                    </Button>
+                    <Button variant="ghost" onClick={() => setStaged(null)}>
+                      Cancel
+                    </Button>
+                  </>
+                )}
               </div>
             )}
             {phase === "auction" ? (
-              <Hand cards={handCards} hiddenCards={hiddenCards} size="md" />
+              <Hand
+                cards={handCards}
+                hiddenCards={hiddenCards}
+                size="md"
+                compact
+              />
             ) : (
               <Hand
                 cards={handCards}
@@ -597,6 +658,41 @@ export default function GamePage() {
           entries={auction}
           onClose={() => setShowAuction(false)}
         />
+      )}
+
+      {confirmConcede && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-ink/80 p-4 backdrop-blur-sm"
+          onClick={() => setConfirmConcede(false)}
+        >
+          <div
+            className="felt w-full max-w-sm rounded-3xl p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-display text-2xl font-bold text-cream">
+              Concede this game?
+            </h3>
+            <p className="mt-2 text-sm text-cream-dim">
+              This ends the game and awards the win to the opposing side. You
+              can&apos;t undo this.
+            </p>
+            <div className="mt-5 flex justify-center gap-2">
+              <Button
+                variant="danger"
+                disabled={pending}
+                onClick={() => {
+                  setConfirmConcede(false);
+                  void concede("concede");
+                }}
+              >
+                Concede
+              </Button>
+              <Button variant="ghost" onClick={() => setConfirmConcede(false)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
 
       {handOver && (

@@ -26,12 +26,12 @@ export function SeatBadge({
 
   return (
     <div
-      className={`flex items-center gap-2 rounded-full border bg-felt-deep/80 px-3 py-1.5 backdrop-blur ${ring} ${shadow}`}
+      className={`flex items-center gap-1.5 rounded-full border bg-felt-deep/80 px-2.5 py-1 backdrop-blur sm:gap-2 sm:px-3 sm:py-1.5 ${ring} ${shadow}`}
     >
       <span className="grid h-7 w-7 place-items-center rounded-full bg-ink/60 font-display text-sm font-bold">
         {seat}
       </span>
-      <span className="max-w-28 truncate text-sm font-medium">
+      <span className="max-w-20 truncate text-sm font-medium sm:max-w-28">
         {username ?? "Open"}
         {isMe && <span className="text-lime/80"> · you</span>}
       </span>

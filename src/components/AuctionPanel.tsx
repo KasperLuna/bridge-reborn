@@ -16,7 +16,7 @@ export function AuctionPanel({
   disabled,
   onCall,
 }: {
-  entries: { call: string; side: "NS" | "EW" }[];
+  entries: { call: string; side: "NS" | "EW"; username: string }[];
   legal: LegalCalls;
   myTurn: boolean;
   disabled: boolean;
@@ -26,7 +26,7 @@ export function AuctionPanel({
   const lastEntries = entries.slice(-6);
 
   return (
-    <div className="flex w-full max-w-md flex-col gap-3 rounded-2xl border border-cream/10 bg-felt-deep/70 p-4 backdrop-blur">
+    <div className="flex h-full min-h-0 w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-cream/10 bg-felt-deep/70 p-4 backdrop-blur">
       {/* History */}
       <div className="flex min-h-10 flex-wrap items-center gap-1.5">
         {lastEntries.length === 0 && (
@@ -44,7 +44,9 @@ export function AuctionPanel({
             }`}
           >
             {e.call}
-            <span className="ml-1 text-[10px] opacity-60">{e.side}</span>
+            <span className="ml-1 max-w-16 truncate text-[10px] opacity-60">
+              {e.username}
+            </span>
           </span>
         ))}
       </div>
@@ -78,7 +80,7 @@ export function AuctionPanel({
       </div>
 
       {/* Bid grid */}
-      <div className="grid grid-cols-5 gap-1">
+      <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-5 gap-1 overflow-y-auto">
         {LEVELS.map((level) =>
           STRAINS.map((strain) => {
             const call = `${level}${strain}`;

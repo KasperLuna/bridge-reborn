@@ -15,6 +15,7 @@ export function Hand({
   hiddenCards = [],
   onPlay,
   size = "md",
+  compact = false,
 }: {
   cards: Card[];
   playable?: Card[] | null;
@@ -23,6 +24,9 @@ export function Hand({
   hiddenCards?: Card[];
   onPlay?: (card: Card) => void;
   size?: "sm" | "md" | "lg";
+  /** Keep the fan at the small-screen height on sm+ (used during auction to
+      leave more vertical room for the centered bid panel). */
+  compact?: boolean;
 }) {
   const n = cards.length;
   const mid = (n - 1) / 2;
@@ -32,7 +36,11 @@ export function Hand({
   const depth = dense ? 1.4 : 2.4;
 
   return (
-    <div className="relative flex h-36 items-end justify-center sm:h-52">
+    <div
+      className={`relative flex h-36 items-end justify-center ${
+        compact ? "" : "sm:h-52"
+      }`}
+    >
       {cards.map((card, i) => {
         const baseY = Math.pow(i - mid, 2) * depth;
         const angle = (i - mid) * step;
@@ -42,7 +50,9 @@ export function Hand({
         const hidden = hiddenCards.includes(card);
         // Playable cards sit raised; staged card lifts well clear of the fan.
         const lift = clickable ? 14 : 0;
-        const y = baseY - lift - (isStaged ? 44 : 0);
+        // Keep the staged-card lift modest so on small screens it stays inside
+        // the short hand container instead of rising into the confirm row.
+        const y = baseY - lift - (isStaged ? 24 : 0);
         const x = (i - mid) * offset;
         const isTrump = trumpSuit !== null && cardSuit(card) === trumpSuit;
 
