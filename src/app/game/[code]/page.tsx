@@ -117,9 +117,7 @@ export default function GamePage() {
 
   const [spectatorVisible, setSpectatorVisible] = useState(false);
   const [handSort, setHandSort] = useState<"suit" | "rank">("suit");
-  const [staged, setStaged] = useState<{ card: Card; seat: Seat } | null>(
-    null,
-  );
+  const [staged, setStaged] = useState<{ card: Card; seat: Seat } | null>(null);
   const [playAnim, setPlayAnim] = useState<{
     card: Card;
     seat: Seat;
@@ -261,8 +259,8 @@ export default function GamePage() {
   const auction = auctionEntries(bids, game);
   const bidTurn = bidTurnSeat(bids, hand, ruleset);
   const declarerSeat = contract
-    ? (contract.declarer_seat as Seat | undefined) ??
-      seatOfUsername(p, contract.declarer_username)
+    ? ((contract.declarer_seat as Seat | undefined) ??
+      seatOfUsername(p, contract.declarer_username))
     : null;
   const playTurn = playTurnSeat(tricks, plays, p, declarerSeat);
   const trumpSuit =
@@ -329,8 +327,8 @@ export default function GamePage() {
       }))
     : [];
   const winnerSeat = displayTrick?.winner_username
-    ? (displayTrick.winner_seat as Seat | undefined) ??
-      seatOfUsername(p, displayTrick.winner_username)
+    ? ((displayTrick.winner_seat as Seat | undefined) ??
+      seatOfUsername(p, displayTrick.winner_username))
     : null;
   const winnerToast =
     wonAnim &&
@@ -349,7 +347,8 @@ export default function GamePage() {
   let ewTricks = 0;
   for (const t of tricks) {
     if (!t.winner_username) continue;
-    const ws = (t.winner_seat as Seat | undefined) ??
+    const ws =
+      (t.winner_seat as Seat | undefined) ??
       seatOfUsername(p, t.winner_username);
     if (!ws) continue;
     if (partnershipOf(ws) === "NS") nsTricks++;
@@ -662,8 +661,7 @@ export default function GamePage() {
               </div>
             )}
             {mySeatData.map((d) => {
-              const active =
-                phase === "auction" ? d.isBidTurn : d.isPlayTurn;
+              const active = phase === "auction" ? d.isBidTurn : d.isPlayTurn;
               return (
                 <div key={d.seat} className="flex flex-col items-center">
                   {mySeats.length > 1 && (
@@ -989,7 +987,8 @@ function HandOverOverlay({
               </>
             )}
 
-            {isSeated && !winnerSide &&
+            {isSeated &&
+              !winnerSide &&
               (mode === "four" ? (
                 <div className="mt-6 flex flex-col gap-2">
                   <Button

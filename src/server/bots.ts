@@ -45,16 +45,16 @@ async function botThinkDelay(solo: boolean): Promise<void> {
  * creation. Moves go through the same route handlers as human moves so all
  * validation, turn checks and scoring stay in one place.
  */
-export async function runBotTurns(pb: PocketBase, handId: string): Promise<void> {
+export async function runBotTurns(
+  pb: PocketBase,
+  handId: string,
+): Promise<void> {
   for (let i = 0; i < MAX_BOT_TURNS; i++) {
     if (!(await runOneBotTurn(pb, handId))) return;
   }
 }
 
-async function runOneBotTurn(
-  pb: PocketBase,
-  handId: string,
-): Promise<boolean> {
+async function runOneBotTurn(pb: PocketBase, handId: string): Promise<boolean> {
   const hand = await pb.collection("hands").getOne<Hand>(handId);
   if (hand.ended_at) return false;
 
@@ -87,12 +87,12 @@ async function runOneBotTurn(
     }),
   ]);
 
-const seatRec = (username: string, seat: Seat): RoomSeat | null =>
-      seats.find((s) => s.username === username && s.seat === seat) ?? null;
+  const seatRec = (username: string, seat: Seat): RoomSeat | null =>
+    seats.find((s) => s.username === username && s.seat === seat) ?? null;
 
-    const solo = room.mode === "solo";
+  const solo = room.mode === "solo";
 
-    if (!contract) {
+  if (!contract) {
     const actorSeat = bidTurnSeat(bids, hand, ruleset);
     if (!actorSeat) return false;
     const rec = seatRec(players[actorSeat], actorSeat);
@@ -134,7 +134,8 @@ const seatRec = (username: string, seat: Seat): RoomSeat | null =>
   const trickPlays = trick
     ? trickPlaysFor(trick.id, plays).map((p) => ({
         card: p.card,
-        seat: (p.seat as Seat | undefined) ??
+        seat:
+          (p.seat as Seat | undefined) ??
           seatOfUsername(players, p.username) ??
           actorSeat,
       }))

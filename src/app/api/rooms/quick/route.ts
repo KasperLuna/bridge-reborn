@@ -12,7 +12,8 @@ const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function randomCode(): string {
   let out = "";
-  for (let i = 0; i < 4; i++) out += CHARS[Math.floor(Math.random() * CHARS.length)];
+  for (let i = 0; i < 4; i++)
+    out += CHARS[Math.floor(Math.random() * CHARS.length)];
   return out;
 }
 
@@ -44,8 +45,7 @@ export async function POST(req: Request) {
       status: body.mode === "solo" ? "active" : "waiting",
       mode: body.mode,
       ruleset: getPreset(DEFAULT_RULESET_ID),
-      started_at:
-        body.mode === "solo" ? new Date().toISOString() : "",
+      started_at: body.mode === "solo" ? new Date().toISOString() : "",
     });
 
     const primarySeat = body.mode === "solo" ? "N" : "N";

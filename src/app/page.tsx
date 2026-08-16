@@ -37,7 +37,8 @@ export default function Home() {
   }, [init]);
 
   useEffect(() => {
-    if (session && !quickNavRef.current) router.replace(`/room/${session.code}`);
+    if (session && !quickNavRef.current)
+      router.replace(`/room/${session.code}`);
   }, [session, router]);
 
   async function doJoin(targetCode: string) {
@@ -65,7 +66,9 @@ export default function Home() {
       const s = await quick(mode, username.trim());
       router.push(mode === "solo" ? `/game/${s.code}` : `/room/${s.code}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start quick game");
+      setError(
+        err instanceof Error ? err.message : "Failed to start quick game",
+      );
     } finally {
       setBusy(false);
       quickNavRef.current = null;

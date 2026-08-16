@@ -117,8 +117,7 @@ export async function POST(
       currentTrick = lastTrick;
     } else {
       const leaderSeat: Seat =
-        (lastTrick?.winner_seat as Seat | undefined) ??
-        leftOf(declarerSeat);
+        (lastTrick?.winner_seat as Seat | undefined) ?? leftOf(declarerSeat);
       currentTrick = await pb.collection("tricks").create<TrickRecord>({
         hand_id: handId,
         trick_number: lastTrick ? lastTrick.trick_number + 1 : 1,
@@ -206,7 +205,9 @@ export async function POST(
     if (trickPlays.length + 1 === 4) {
       const allPlays: TrickPlay[] = [
         ...trickPlays.map((p) => {
-          const s = (p.seat as Seat | undefined) ?? seatOfUsername(players, p.username)!;
+          const s =
+            (p.seat as Seat | undefined) ??
+            seatOfUsername(players, p.username)!;
           return { card: p.card, seat: s };
         }),
         { card: body.card, seat: playerSeat },
@@ -237,7 +238,8 @@ export async function POST(
       for (const t of allTricks) {
         if (!t.winner_username) continue;
         completed++;
-        const ws = (t.winner_seat as Seat | undefined) ??
+        const ws =
+          (t.winner_seat as Seat | undefined) ??
           seatOfUsername(players, t.winner_username);
         if (!ws) continue;
         if (partnershipOf(ws) === "NS") nsTricks++;

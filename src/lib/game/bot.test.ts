@@ -19,7 +19,9 @@ describe("bot hcp", () => {
   });
 
   it("picks longest suit, ties broken S>H>D>C", () => {
-    expect(longestSuit(hand(["AS", "KS", "QS", "2H", "3H", "4H", "5D", "6D"]))).toBe("S");
+    expect(
+      longestSuit(hand(["AS", "KS", "QS", "2H", "3H", "4H", "5D", "6D"])),
+    ).toBe("S");
     expect(longestSuit(hand(["2S", "3H", "4D", "5C", "6C"]))).toBe("C");
   });
 });
@@ -27,7 +29,21 @@ describe("bot hcp", () => {
 describe("bot bidding", () => {
   it("opens the longest suit with 13+ HCP", () => {
     const call = chooseBid({
-      hand: hand(["AS", "KS", "QS", "JS", "2S", "3S", "4S", "AH", "KH", "2H", "3H", "4D", "5D"]),
+      hand: hand([
+        "AS",
+        "KS",
+        "QS",
+        "JS",
+        "2S",
+        "3S",
+        "4S",
+        "AH",
+        "KH",
+        "2H",
+        "3H",
+        "4D",
+        "5D",
+      ]),
       entries: [],
       side: "NS",
       canBid: true,
@@ -38,7 +54,21 @@ describe("bot bidding", () => {
 
   it("opens 1NT when balanced with 15+ HCP", () => {
     const call = chooseBid({
-      hand: hand(["AS", "KS", "QS", "2S", "AH", "KH", "2H", "3H", "4D", "5D", "6D", "7D", "8C"]),
+      hand: hand([
+        "AS",
+        "KS",
+        "QS",
+        "2S",
+        "AH",
+        "KH",
+        "2H",
+        "3H",
+        "4D",
+        "5D",
+        "6D",
+        "7D",
+        "8C",
+      ]),
       entries: [],
       side: "NS",
       canBid: true,
@@ -49,7 +79,21 @@ describe("bot bidding", () => {
 
   it("bids 3NT with 21+ HCP", () => {
     const call = chooseBid({
-      hand: hand(["AS", "KS", "QS", "JS", "AH", "KH", "QH", "JH", "AD", "KD", "QD", "JD", "AC"]),
+      hand: hand([
+        "AS",
+        "KS",
+        "QS",
+        "JS",
+        "AH",
+        "KH",
+        "QH",
+        "JH",
+        "AD",
+        "KD",
+        "QD",
+        "JD",
+        "AC",
+      ]),
       entries: [],
       side: "NS",
       canBid: true,
@@ -60,7 +104,21 @@ describe("bot bidding", () => {
 
   it("passes with a weak hand", () => {
     const call = chooseBid({
-      hand: hand(["2S", "3S", "4S", "5S", "2H", "3H", "4H", "5H", "2D", "3D", "4D", "5D", "2C"]),
+      hand: hand([
+        "2S",
+        "3S",
+        "4S",
+        "5S",
+        "2H",
+        "3H",
+        "4H",
+        "5H",
+        "2D",
+        "3D",
+        "4D",
+        "5D",
+        "2C",
+      ]),
       entries: [],
       side: "NS",
       canBid: true,
@@ -71,7 +129,21 @@ describe("bot bidding", () => {
 
   it("raises partner's suit on a fit", () => {
     const call = chooseBid({
-      hand: hand(["AS", "KS", "2H", "3H", "4H", "5H", "2D", "3D", "4D", "5D", "6D", "7C", "8C"]),
+      hand: hand([
+        "AS",
+        "KS",
+        "2H",
+        "3H",
+        "4H",
+        "5H",
+        "2D",
+        "3D",
+        "4D",
+        "5D",
+        "6D",
+        "7C",
+        "8C",
+      ]),
       entries: [entry("1H", "NS")],
       side: "NS",
       canBid: true,
@@ -82,7 +154,21 @@ describe("bot bidding", () => {
 
   it("passes after partner's bid without a fit", () => {
     const call = chooseBid({
-      hand: hand(["2S", "3S", "4S", "5S", "2H", "3H", "4H", "5H", "2D", "3D", "4D", "5D", "2C"]),
+      hand: hand([
+        "2S",
+        "3S",
+        "4S",
+        "5S",
+        "2H",
+        "3H",
+        "4H",
+        "5H",
+        "2D",
+        "3D",
+        "4D",
+        "5D",
+        "2C",
+      ]),
       entries: [entry("1H", "NS")],
       side: "NS",
       canBid: true,
@@ -93,7 +179,21 @@ describe("bot bidding", () => {
 
   it("does not raise a partner's raise (caps same-side escalation)", () => {
     const call = chooseBid({
-      hand: hand(["AS", "KS", "QS", "JS", "2S", "3S", "4S", "AH", "KH", "2H", "4D", "5D", "6D"]),
+      hand: hand([
+        "AS",
+        "KS",
+        "QS",
+        "JS",
+        "2S",
+        "3S",
+        "4S",
+        "AH",
+        "KH",
+        "2H",
+        "4D",
+        "5D",
+        "6D",
+      ]),
       entries: [entry("1S", "EW"), entry("2S", "EW")],
       side: "EW",
       canBid: true,
@@ -104,7 +204,21 @@ describe("bot bidding", () => {
 
   it("overcalls an opponent bid with strength", () => {
     const call = chooseBid({
-      hand: hand(["AS", "KS", "QS", "JS", "2S", "3S", "4S", "AH", "KH", "2H", "4D", "5D", "6D"]),
+      hand: hand([
+        "AS",
+        "KS",
+        "QS",
+        "JS",
+        "2S",
+        "3S",
+        "4S",
+        "AH",
+        "KH",
+        "2H",
+        "4D",
+        "5D",
+        "6D",
+      ]),
       entries: [entry("1C", "EW")],
       side: "NS",
       canBid: true,
@@ -115,7 +229,21 @@ describe("bot bidding", () => {
 
   it("respects a high prior bid (passes when it cannot outrank)", () => {
     const call = chooseBid({
-      hand: hand(["AS", "KS", "QS", "2S", "3S", "4S", "2H", "3H", "4D", "5D", "6D", "7C", "8C"]),
+      hand: hand([
+        "AS",
+        "KS",
+        "QS",
+        "2S",
+        "3S",
+        "4S",
+        "2H",
+        "3H",
+        "4D",
+        "5D",
+        "6D",
+        "7C",
+        "8C",
+      ]),
       entries: [entry("7NT", "EW")],
       side: "NS",
       canBid: false,

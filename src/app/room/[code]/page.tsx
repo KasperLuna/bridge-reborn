@@ -310,25 +310,27 @@ export default function RoomPage() {
 
             {/* Secondary actions */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-              {isSeated && room?.mode === "four" && room?.status === "waiting" && (
-                <label className="flex items-center gap-2 text-sm text-cream-dim">
-                  <span>Ruleset</span>
-                  <select
-                    value={currentPreset ?? presets[0]?.id}
-                    disabled={busy}
-                    onChange={(e) =>
-                      void run(() => changeRuleset(e.target.value))
-                    }
-                    className="min-h-11 rounded-xl border border-cream/15 bg-ink/60 px-3 text-cream focus:border-lime/60 focus:outline-none disabled:opacity-40"
-                  >
-                    {presets.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
+              {isSeated &&
+                room?.mode === "four" &&
+                room?.status === "waiting" && (
+                  <label className="flex items-center gap-2 text-sm text-cream-dim">
+                    <span>Ruleset</span>
+                    <select
+                      value={currentPreset ?? presets[0]?.id}
+                      disabled={busy}
+                      onChange={(e) =>
+                        void run(() => changeRuleset(e.target.value))
+                      }
+                      className="min-h-11 rounded-xl border border-cream/15 bg-ink/60 px-3 text-cream focus:border-lime/60 focus:outline-none disabled:opacity-40"
+                    >
+                      {presets.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
               {isSeated && (
                 <Button
                   variant="ghost"

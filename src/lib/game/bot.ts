@@ -126,7 +126,8 @@ export function chooseBid({
 
 function lowestCard(cards: Card[]): Card {
   return cards.reduce(
-    (best, c) => (rankIndex(cardRank(c)) < rankIndex(cardRank(best)) ? c : best),
+    (best, c) =>
+      rankIndex(cardRank(c)) < rankIndex(cardRank(best)) ? c : best,
     cards[0]!,
   );
 }
@@ -185,7 +186,6 @@ export function choosePlay({
   if (trick.length === 0) return leadCard(legal);
   const strain: Suit | null = trump === "NT" ? null : trump;
   return (
-    lowestCardThatWins(legal, trick, mySeat, strain, side) ??
-    lowestCard(legal)
+    lowestCardThatWins(legal, trick, mySeat, strain, side) ?? lowestCard(legal)
   );
 }
