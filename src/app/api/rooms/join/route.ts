@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import type { Seat } from "@/lib/game/types";
-import { DEFAULT_RULESET_ID, getPreset } from "@/lib/rulesets";
+import { DEFAULT_RULESET_ID, getPreset, resolveRuleset } from "@/lib/rulesets";
 import type { Room, RoomSeat } from "@/lib/types";
+import { runBotTurns } from "@/server/bots";
 import { errorResponse } from "@/server/errors";
-import { getRoomByCode } from "@/server/helpers";
+import { createGameWithHand, getRoomByCode } from "@/server/helpers";
 import { getAdminClient } from "@/server/pb";
 
 const SEAT_ORDER: Seat[] = ["N", "S", "E", "W"];
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
       room = await pb.collection("rooms").create<Room>({
         code: body.code,
         status: "waiting",
+        mode: "four",
         ruleset: getPreset(DEFAULT_RULESET_ID),
       });
     }
@@ -61,6 +63,66 @@ export async function POST(req: Request) {
       return NextResponse.json(toSession(updated, room));
     } catch {
       // no existing record — fall through to create
+    }
+
+    // Pairs mode: a newcomer takes the free partnership (two seats), or
+    // spectates when both sides are already taken.
+    if (room.mode === "pairs") {
+      if (body.wantSpectator) {
+        const spectated = await pb.collection("room_seats").create<RoomSeat>({
+          room_id: room.id,
+          username: body.username,
+          seat: "",
+          is_spectator: true,
+          joined_at: new Date().toISOString(),
+        });
+        return NextResponse.json(toSession(spectated, room));
+      }
+      const seats = await pb.collection("room_seats").getFullList<RoomSeat>({
+        filter: pb.filter("room_id = {:roomId}", { roomId: room.id }),
+      });
+      const seated = seats.filter((s) => !s.is_spectator && s.seat);
+      const nsTaken = seated.some((s) => s.seat === "N" || s.seat === "S");
+      const ewTaken = seated.some((s) => s.seat === "E" || s.seat === "W");
+
+      if (nsTaken && ewTaken) {
+        const spectated = await pb.collection("room_seats").create<RoomSeat>({
+          room_id: room.id,
+          username: body.username,
+          seat: "",
+          is_spectator: true,
+          joined_at: new Date().toISOString(),
+        });
+        return NextResponse.json(toSession(spectated, room));
+      }
+
+      const take = nsTaken ? (["E", "W"] as Seat[]) : (["N", "S"] as Seat[]);
+      let primary: RoomSeat | null = null;
+      for (const seat of take) {
+        primary = await pb.collection("room_seats").create<RoomSeat>({
+          room_id: room.id,
+          username: body.username,
+          seat,
+          is_spectator: false,
+          joined_at: new Date().toISOString(),
+        });
+      }
+
+      // Auto-start as soon as both partnerships are seated.
+      const after = await pb.collection("room_seats").getFullList<RoomSeat>({
+        filter: pb.filter("room_id = {:roomId}", { roomId: room.id }),
+      });
+      if (after.filter((s) => !s.is_spectator && s.seat).length === 4) {
+        const ruleset = resolveRuleset(room.ruleset);
+        const players = after.filter((s) => !s.is_spectator && s.seat);
+        const { hand } = await createGameWithHand(pb, room, players, ruleset);
+        await pb.collection("rooms").update(room.id, {
+          status: "active",
+          started_at: new Date().toISOString(),
+        });
+        await runBotTurns(pb, hand.id);
+      }
+      return NextResponse.json(toSession(primary!, room));
     }
 
     let isSpectator = room.status !== "waiting" || body.wantSpectator;

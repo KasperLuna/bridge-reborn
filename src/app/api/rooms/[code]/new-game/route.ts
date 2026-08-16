@@ -4,6 +4,7 @@ import { z } from "zod";
 import { resolveRuleset } from "@/lib/rulesets";
 import type { Game, Hand } from "@/lib/types";
 import { errorResponse } from "@/server/errors";
+import { runBotTurns } from "@/server/bots";
 import {
   createGameWithHand,
   getSeatedPlayers,
@@ -82,6 +83,9 @@ export async function POST(
 
     const ruleset = resolveRuleset(room.ruleset);
     const created = await createGameWithHand(pb, room, players, ruleset);
+
+    // The opener may be a bot (solo quick games); let it act immediately.
+    await runBotTurns(pb, created.hand.id);
 
     return NextResponse.json({
       ok: true,

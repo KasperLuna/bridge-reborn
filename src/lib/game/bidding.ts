@@ -7,7 +7,7 @@ import type {
   Seat,
   Strain,
 } from "./types";
-import { nextSeat } from "./seats";
+import { nextSeat, rotateFrom } from "./seats";
 
 export type AuctionEntry = {
   call: string;
@@ -161,4 +161,31 @@ export function declarerUsername(entries: AuctionEntry[]): string | null {
     }
   }
   return last.entry.username;
+}
+
+/**
+ * Seat of the declarer. Auction rotation starts at `opener`, so entry i (0-based)
+ * belongs to seat `rotateFrom(opener, i)`. Usernames alone can't pin the seat
+ * in pairs mode (one username owns two seats), so derive it from rotation.
+ */
+export function declarerSeat(
+  entries: AuctionEntry[],
+  opener: Seat,
+): Seat | null {
+  const contract = finalContract(entries);
+  if (!contract) return null;
+  const last = lastBid(entries)!;
+  const winningSide = last.entry.side;
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i]!;
+    const call = parseAuctionCall(e.call);
+    if (
+      call.kind === "bid" &&
+      call.strain === contract.strain &&
+      e.side === winningSide
+    ) {
+      return rotateFrom(opener, i);
+    }
+  }
+  return rotateFrom(opener, last.index);
 }

@@ -13,6 +13,7 @@ type SessionState = {
   set: (session: Session) => void;
   clear: () => void;
   join: (code: string, username: string) => Promise<void>;
+  quick: (mode: "solo" | "pairs", username: string) => Promise<Session>;
 };
 
 export const useSessionStore = create<SessionState>((set) => ({
@@ -37,5 +38,12 @@ export const useSessionStore = create<SessionState>((set) => ({
     const result = await api.joinRoom(code, username);
     saveSession(result);
     set({ session: result });
+  },
+
+  quick: async (mode, username) => {
+    const result = await api.quickGame(mode, username);
+    saveSession(result);
+    set({ session: result });
+    return result;
   },
 }));

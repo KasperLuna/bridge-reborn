@@ -9,6 +9,7 @@ import {
   seatOfUsername,
   usernameForSeat,
 } from "@/lib/game/seats";
+import type { Seat } from "@/lib/game/types";
 import { isHandOver, trickWinner } from "@/lib/game/trick";
 import type { TrickPlay } from "@/lib/game/trick";
 import type { Partnership } from "@/lib/game/types";
@@ -23,6 +24,7 @@ import type {
   TrickRecord,
 } from "@/lib/types";
 import { errorResponse } from "@/server/errors";
+import { runBotTurns } from "@/server/bots";
 import {
   gamePlayers,
   requireSeatedPlayer,
@@ -94,7 +96,9 @@ export async function POST(
     }
 
     const players = gamePlayers(game);
-    const declarerSeat = seatOfUsername(players, contract.declarer_username);
+    const declarerSeat =
+      (contract.declarer_seat as Seat | undefined) ??
+      seatOfUsername(players, contract.declarer_username);
     if (!declarerSeat) {
       return NextResponse.json(
         { error: "Cannot map declarer seat" },
@@ -112,13 +116,14 @@ export async function POST(
     if (lastTrick && !lastTrick.winner_username) {
       currentTrick = lastTrick;
     } else {
-      const leaderUsername =
-        lastTrick?.winner_username ??
-        usernameForSeat(players, leftOf(declarerSeat));
+      const leaderSeat: Seat =
+        (lastTrick?.winner_seat as Seat | undefined) ??
+        leftOf(declarerSeat);
       currentTrick = await pb.collection("tricks").create<TrickRecord>({
         hand_id: handId,
         trick_number: lastTrick ? lastTrick.trick_number + 1 : 1,
-        leader_username: leaderUsername,
+        leader_username: usernameForSeat(players, leaderSeat),
+        leader_seat: leaderSeat,
       });
     }
 
@@ -137,7 +142,9 @@ export async function POST(
     }
 
     // Turn check.
-    const leaderSeat = seatOfUsername(players, currentTrick.leader_username);
+    const leaderSeat =
+      (currentTrick.leader_seat as Seat | undefined) ??
+      seatOfUsername(players, currentTrick.leader_username);
     if (!leaderSeat) {
       return NextResponse.json(
         { error: "Cannot map trick leader" },
@@ -190,6 +197,7 @@ export async function POST(
       trick_id: currentTrick.id,
       hand_id: handId,
       username: body.username,
+      seat: playerSeat,
       play_sequence: trickPlays.length + 1,
       card: body.card,
     });
@@ -198,7 +206,7 @@ export async function POST(
     if (trickPlays.length + 1 === 4) {
       const allPlays: TrickPlay[] = [
         ...trickPlays.map((p) => {
-          const s = seatOfUsername(players, p.username)!;
+          const s = (p.seat as Seat | undefined) ?? seatOfUsername(players, p.username)!;
           return { card: p.card, seat: s };
         }),
         { card: body.card, seat: playerSeat },
@@ -207,11 +215,14 @@ export async function POST(
       const winner = trickWinner(allPlays, contract.strain);
       await pb.collection("tricks").update(currentTrick.id, {
         winner_username: usernameForSeat(players, winner),
+        winner_seat: winner,
       });
 
       await maybeFinishHand(partnershipOf(declarerSeat));
     }
 
+    // Drive any bots that are now due (new trick, trick win, or hand end).
+    if (!seat.is_bot) await runBotTurns(pb, handId);
     return NextResponse.json({ ok: true });
 
     async function maybeFinishHand(declarerSide: Partnership) {
@@ -226,7 +237,8 @@ export async function POST(
       for (const t of allTricks) {
         if (!t.winner_username) continue;
         completed++;
-        const ws = seatOfUsername(players, t.winner_username);
+        const ws = (t.winner_seat as Seat | undefined) ??
+          seatOfUsername(players, t.winner_username);
         if (!ws) continue;
         if (partnershipOf(ws) === "NS") nsTricks++;
         else ewTricks++;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
@@ -21,18 +21,23 @@ export default function Home() {
   const session = useSessionStore((s) => s.session);
   const init = useSessionStore((s) => s.init);
   const join = useSessionStore((s) => s.join);
+  const quick = useSessionStore((s) => s.quick);
 
   const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [quickOpen, setQuickOpen] = useState(false);
+  // Suppress the resume-session redirect while a quick-game nav is in flight
+  // (solo must land on /game, not the lobby).
+  const quickNavRef = useRef<"solo" | "pairs" | null>(null);
 
   useEffect(() => {
     init();
   }, [init]);
 
   useEffect(() => {
-    if (session) router.replace(`/room/${session.code}`);
+    if (session && !quickNavRef.current) router.replace(`/room/${session.code}`);
   }, [session, router]);
 
   async function doJoin(targetCode: string) {
@@ -49,6 +54,21 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "Failed to join");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function runQuick(mode: "solo" | "pairs") {
+    setError(null);
+    setBusy(true);
+    try {
+      quickNavRef.current = mode;
+      const s = await quick(mode, username.trim());
+      router.push(mode === "solo" ? `/game/${s.code}` : `/room/${s.code}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to start quick game");
+    } finally {
+      setBusy(false);
+      quickNavRef.current = null;
     }
   }
 
@@ -109,13 +129,50 @@ export default function Home() {
               type="button"
               variant="ghost"
               disabled={busy}
-              onClick={() => void doJoin(randomCode())}
+              onClick={() => {
+                if (!username.trim()) {
+                  setError("Pick a username first");
+                  return;
+                }
+                setQuickOpen(true);
+              }}
             >
               Quick game
             </Button>
           </div>
         </form>
       </div>
+
+      {quickOpen && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-ink/80 p-4 backdrop-blur-sm"
+          onClick={() => setQuickOpen(false)}
+        >
+          <div
+            className="felt w-full max-w-sm rounded-3xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-display text-2xl font-bold text-cream">
+              Quick game
+            </h3>
+            <p className="mt-2 text-sm text-cream-dim">
+              No waiting for a full table — jump straight in.
+            </p>
+            <div className="mt-5 flex flex-col gap-2">
+              <Button disabled={busy} onClick={() => void runQuick("solo")}>
+                Solo · you + 3 bots
+              </Button>
+              <Button
+                variant="ghost"
+                disabled={busy}
+                onClick={() => void runQuick("pairs")}
+              >
+                2-player · NS vs EW
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

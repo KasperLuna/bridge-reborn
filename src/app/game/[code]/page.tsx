@@ -15,9 +15,9 @@ import { useGameSync } from "@/hooks/useGameSync";
 import { useRoomSync } from "@/hooks/useRoomSync";
 import { sortHand, sortHandByRank } from "@/lib/game/cards";
 import { opponentsOf, partnershipOf, seatOfUsername } from "@/lib/game/seats";
-import type { Card, Seat } from "@/lib/game/types";
+import type { Card, GamePlayers, Seat } from "@/lib/game/types";
 import { resolveRuleset } from "@/lib/rulesets";
-import type { HandResultRecord } from "@/lib/types";
+import type { HandResultRecord, PlayRecord, RoomMode } from "@/lib/types";
 import { useGameStore } from "@/store/game-store";
 import { useRoomStore } from "@/store/room-store";
 import { useSessionStore } from "@/store/session-store";
@@ -80,6 +80,15 @@ function seatDir(seat: Seat, mySeat: Seat | null): TableDir {
         : "right";
 }
 
+/**
+ * The seat a play came from. Plays record their seat explicitly; fall back to
+ * the old username→seat mapping for records created before the migration.
+ */
+function seatOfPlay(pl: PlayRecord, p: GamePlayers): Seat {
+  if (pl.seat) return pl.seat;
+  return seatOfUsername(p, pl.username) ?? "N";
+}
+
 export default function GamePage() {
   const params = useParams<{ code: string }>();
   const router = useRouter();
@@ -108,9 +117,12 @@ export default function GamePage() {
 
   const [spectatorVisible, setSpectatorVisible] = useState(false);
   const [handSort, setHandSort] = useState<"suit" | "rank">("suit");
-  const [staged, setStaged] = useState<Card | null>(null);
+  const [staged, setStaged] = useState<{ card: Card; seat: Seat } | null>(
+    null,
+  );
   const [playAnim, setPlayAnim] = useState<{
     card: Card;
+    seat: Seat;
     from: { x: number; y: number };
     to: { x: number; y: number };
   } | null>(null);
@@ -162,7 +174,9 @@ export default function GamePage() {
       setWonAnim(null);
       return;
     }
-    const ws = seatOfUsername(players(game), lastWon.winner_username);
+    const ws =
+      (lastWon.winner_seat as Seat | undefined) ??
+      seatOfUsername(players(game), lastWon.winner_username);
     const name = ws ? players(game)[ws] : null;
     if (!ws || !name) return;
     setWonAnim({
@@ -217,6 +231,19 @@ export default function GamePage() {
 
   const ruleset = useMemo(() => resolveRuleset(room?.ruleset), [room?.ruleset]);
 
+  // Seats this human controls: one (four/solo) or a whole side (pairs).
+  const mySeats: Seat[] = useMemo(
+    () =>
+      seats
+        .filter(
+          (s) => !s.is_spectator && s.seat && s.username === session?.username,
+        )
+        .map((s) => s.seat as Seat),
+    [seats, session?.username],
+  );
+  const primarySeat: Seat | null =
+    (session?.seat as Seat) || mySeats[0] || null;
+
   if (!session) return null;
   if (!game || !hand || !ruleset) {
     return (
@@ -227,53 +254,65 @@ export default function GamePage() {
   }
 
   const p = players(game);
-  const mySeat = session.seat as Seat | null;
   const myUsername = session.username;
   const handOver = !!hand.ended_at;
   const phase = contract ? "play" : "auction";
 
   const auction = auctionEntries(bids, game);
   const bidTurn = bidTurnSeat(bids, hand, ruleset);
-  const myBidInfo = mySeat
-    ? legalBidsForMe(bids, game, hand, ruleset, mySeat)
+  const declarerSeat = contract
+    ? (contract.declarer_seat as Seat | undefined) ??
+      seatOfUsername(p, contract.declarer_username)
     : null;
-  const myBidTurn = myBidInfo?.myTurn ?? false;
+  const playTurn = playTurnSeat(tricks, plays, p, declarerSeat);
+  const trumpSuit =
+    contract && contract.strain !== "NT" ? contract.strain : null;
+
+  // Per-seat view for every seat this human controls.
+  const mySeatData = mySeats.map((seat) => {
+    const bidInfo = legalBidsForMe(bids, game, hand, ruleset, seat);
+    const sorted =
+      handSort === "suit"
+        ? sortHand(hand.deal[seat] ?? [])
+        : sortHandByRank(hand.deal[seat] ?? []);
+    // Cards already played leave the fan (server keeps them in deal, so
+    // derive played cards from the plays list instead).
+    const played = new Set(
+      plays.filter((pl) => pl.username === myUsername).map((pl) => pl.card),
+    );
+    return {
+      seat,
+      seatId: seats.find(
+        (r) => r.username === myUsername && r.seat === seat && !r.is_spectator,
+      )?.id,
+      bidInfo,
+      isBidTurn: bidInfo.myTurn && !handOver,
+      isPlayTurn: !session.isSpectator && seat === playTurn && !handOver,
+      legal: legalCardsForMe(hand, seat, myUsername, plays, tricks, ruleset),
+      cards: sorted.filter((c) => !played.has(c)),
+      hidden: playAnim && playAnim.seat === seat ? [playAnim.card] : [],
+    };
+  });
+  const myBidTurn = mySeatData.some((d) => d.isBidTurn);
+  const activeBidSeat = mySeatData.find((d) => d.isBidTurn) ?? null;
 
   // The full bid panel sits in the felt center on sm+, but on phones it docks
   // in the footer (below the table) so it can't overlap the seat badges and
   // takes the space the hand would otherwise use. Rendered in both spots, one
   // hidden per breakpoint.
   const auctionPanel =
-    myBidTurn && !handOver ? (
+    myBidTurn && !handOver && activeBidSeat ? (
       <AuctionPanel
         entries={auction}
-        legal={myBidInfo!}
+        legal={activeBidSeat.bidInfo}
         myTurn
         disabled={pending}
-        onCall={(call) => void bid(call)}
+        onCall={(call) => void bid(call, activeBidSeat.seatId)}
       />
     ) : null;
 
-  const declarerSeat = contract
-    ? seatOfUsername(p, contract.declarer_username)
-    : null;
-  const playTurn = playTurnSeat(tricks, plays, p, declarerSeat);
-  const myPlayTurn = !session.isSpectator && mySeat === playTurn && !handOver;
-  const myLegal = mySeat
-    ? legalCardsForMe(hand, mySeat, myUsername, plays, tricks, ruleset)
-    : [];
-  const rawHand = mySeat ? (hand.deal[mySeat] ?? []) : [];
-  const myHand =
-    handSort === "suit" ? sortHand(rawHand) : sortHandByRank(rawHand);
-  // Cards I've already played leave the fan (server keeps them in deal, so
-  // derive played cards from the plays list instead).
-  const playedByMe = new Set(
-    plays.filter((pl) => pl.username === myUsername).map((pl) => pl.card),
-  );
-  const handCards = myHand.filter((c) => !playedByMe.has(c));
-  const hiddenCards = playAnim ? [playAnim.card] : [];
-  const trumpSuit =
-    contract && contract.strain !== "NT" ? contract.strain : null;
+  const seatIdOf = (seat: Seat) =>
+    mySeatData.find((d) => d.seat === seat)?.seatId;
 
   // Show the open trick, or the most recent won trick while it's being
   // collected (flip/fly under the winner) — the middle clears after 7s.
@@ -286,11 +325,12 @@ export default function GamePage() {
   const trickCards = displayTrick
     ? trickPlaysFor(displayTrick.id, plays).map((pl) => ({
         card: pl.card,
-        seat: seatOfUsername(p, pl.username) ?? "N",
+        seat: seatOfPlay(pl, p),
       }))
     : [];
   const winnerSeat = displayTrick?.winner_username
-    ? seatOfUsername(p, displayTrick.winner_username)
+    ? (displayTrick.winner_seat as Seat | undefined) ??
+      seatOfUsername(p, displayTrick.winner_username)
     : null;
   const winnerToast =
     wonAnim &&
@@ -309,7 +349,8 @@ export default function GamePage() {
   let ewTricks = 0;
   for (const t of tricks) {
     if (!t.winner_username) continue;
-    const ws = seatOfUsername(p, t.winner_username);
+    const ws = (t.winner_seat as Seat | undefined) ??
+      seatOfUsername(p, t.winner_username);
     if (!ws) continue;
     if (partnershipOf(ws) === "NS") nsTricks++;
     else ewTricks++;
@@ -343,7 +384,7 @@ export default function GamePage() {
 
   const dirs = SEATS.reduce(
     (acc, s) => {
-      acc[s] = seatDir(s, mySeat);
+      acc[s] = seatDir(s, primarySeat);
       return acc;
     },
     {} as Record<Seat, TableDir>,
@@ -351,40 +392,41 @@ export default function GamePage() {
 
   const activeSeat = !handOver && (phase === "auction" ? bidTurn : playTurn);
 
-  function handleCardClick(card: Card) {
+  function handleCardClick(card: Card, seat: Seat) {
     if (playAnim) return;
-    if (staged === card) {
+    if (staged && staged.card === card && staged.seat === seat) {
       setStaged(null);
       return;
     }
-    setStaged(card);
+    setStaged({ card, seat });
   }
 
-  function finishPlay(card: Card) {
+  function finishPlay(card: Card, seatId?: string) {
     setStaged(null);
     setInFlight(true);
-    void play(card);
+    void play(card, seatId);
   }
 
   function confirmPlay() {
     if (!staged) return;
     const fromEl = document.querySelector<HTMLElement>(
-      `[data-hand-card="${staged}"]`,
+      `[data-hand-card="${staged.card}"]`,
     );
     const toEl = document.querySelector<HTMLElement>(
-      `[data-trick-slot="${mySeat}"]`,
+      `[data-trick-slot="${staged.seat}"]`,
     );
     const from = fromEl?.getBoundingClientRect();
     const to = toEl?.getBoundingClientRect();
     if (from && to) {
       setPlayAnim({
-        card: staged,
+        card: staged.card,
+        seat: staged.seat,
         from: { x: from.left, y: from.top },
         to: { x: to.left, y: to.top },
       });
       setStaged(null);
     } else {
-      finishPlay(staged);
+      finishPlay(staged.card, seatIdOf(staged.seat));
     }
   }
 
@@ -460,7 +502,7 @@ export default function GamePage() {
                   username={rec?.username ?? p[seat] ?? null}
                   active={activeSeat === seat}
                   winner={winnerSeat === seat}
-                  isMe={seat === mySeat}
+                  isMe={mySeats.includes(seat)}
                 />
               </div>
             );
@@ -606,7 +648,9 @@ export default function GamePage() {
               <div className="mb-2 flex h-11 items-center justify-center gap-2">
                 {staged && (
                   <>
-                    <span className="text-sm text-cream">Play {staged}?</span>
+                    <span className="text-sm text-cream">
+                      Play {staged.card}?
+                    </span>
                     <Button onClick={confirmPlay} disabled={!!playAnim}>
                       Play
                     </Button>
@@ -617,24 +661,48 @@ export default function GamePage() {
                 )}
               </div>
             )}
-            {phase === "auction" ? (
-              <Hand
-                cards={handCards}
-                hiddenCards={hiddenCards}
-                size="md"
-                compact
-              />
-            ) : (
-              <Hand
-                cards={handCards}
-                playable={myPlayTurn ? myLegal : []}
-                trumpSuit={trumpSuit}
-                staged={staged}
-                hiddenCards={hiddenCards}
-                onPlay={myPlayTurn ? handleCardClick : undefined}
-                size="md"
-              />
-            )}
+            {mySeatData.map((d) => {
+              const active =
+                phase === "auction" ? d.isBidTurn : d.isPlayTurn;
+              return (
+                <div key={d.seat} className="flex flex-col items-center">
+                  {mySeats.length > 1 && (
+                    <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold tracking-[0.25em] text-cream-dim/70 uppercase">
+                      <span
+                        className={`grid h-6 w-6 place-items-center rounded-full font-display text-xs font-bold ${
+                          active
+                            ? "bg-lime/15 text-lime"
+                            : "bg-ink/60 text-cream-dim"
+                        }`}
+                      >
+                        {d.seat}
+                      </span>
+                      {active
+                        ? phase === "auction"
+                          ? "to bid"
+                          : "to play"
+                        : "waiting"}
+                    </p>
+                  )}
+                  <Hand
+                    cards={d.cards}
+                    playable={phase === "play" && active ? d.legal : []}
+                    trumpSuit={trumpSuit}
+                    staged={staged?.seat === d.seat ? staged.card : null}
+                    hiddenCards={d.hidden}
+                    onPlay={
+                      phase === "play" && active
+                        ? (c) => handleCardClick(c, d.seat)
+                        : !active
+                          ? () => {}
+                          : undefined
+                    }
+                    size="md"
+                    compact={mySeats.length > 1}
+                  />
+                </div>
+              );
+            })}
           </div>
         ) : null}
       </footer>
@@ -646,7 +714,7 @@ export default function GamePage() {
           animate={{ left: playAnim.to.x, top: playAnim.to.y }}
           transition={{ duration: 0.4, ease: "easeInOut" }}
           onAnimationComplete={() => {
-            if (!inFlight) finishPlay(playAnim.card);
+            if (!inFlight) finishPlay(playAnim.card, seatIdOf(playAnim.seat));
           }}
         >
           <PlayingCard card={playAnim.card} size="sm" />
@@ -714,7 +782,8 @@ export default function GamePage() {
           }
           handWinnerNames={handWinnerNames}
           endReason={game.end_reason || null}
-          isNorth={mySeat === "N"}
+          mode={room?.mode ?? "four"}
+          isNorth={mySeats.includes("N")}
           isSeated={!session.isSpectator}
           allReady={allFourReady(seats)}
           myReady={!!seats.find((s) => s.id === session.seatId)?.ready}
@@ -786,6 +855,7 @@ function HandOverOverlay({
   winnerNames,
   handWinnerNames,
   endReason,
+  mode,
   isNorth,
   isSeated,
   allReady,
@@ -810,6 +880,7 @@ function HandOverOverlay({
   /** Players on the side that won the just-finished hand. */
   handWinnerNames: [string, string] | null;
   endReason: string | null;
+  mode: RoomMode;
   isNorth: boolean;
   isSeated: boolean;
   allReady: boolean;
@@ -879,7 +950,7 @@ function HandOverOverlay({
                 </h2>
                 <p className="mt-1 text-sm text-cream-dim">
                   {winnerSide} win
-                  {endReason === "concede"
+                  {endReason === "conceded"
                     ? " · by concession"
                     : " · opponent left"}
                 </p>
@@ -918,21 +989,26 @@ function HandOverOverlay({
               </>
             )}
 
-            {isSeated && !winnerSide && (
-              <div className="mt-6 flex flex-col gap-2">
-                <Button
-                  variant={myReady ? "primary" : "ghost"}
-                  onClick={() => onReady(!myReady)}
-                >
-                  {myReady ? "Ready ✓" : "Ready for next"}
-                </Button>
-                {isNorth && (
-                  <Button disabled={!allReady} onClick={onNext}>
-                    {allReady ? "Deal next hand" : "Waiting for players"}
+            {isSeated && !winnerSide &&
+              (mode === "four" ? (
+                <div className="mt-6 flex flex-col gap-2">
+                  <Button
+                    variant={myReady ? "primary" : "ghost"}
+                    onClick={() => onReady(!myReady)}
+                  >
+                    {myReady ? "Ready ✓" : "Ready for next"}
                   </Button>
-                )}
-              </div>
-            )}
+                  {isNorth && (
+                    <Button disabled={!allReady} onClick={onNext}>
+                      {allReady ? "Deal next hand" : "Waiting for players"}
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-6 flex flex-col gap-2">
+                  <Button onClick={onNext}>Deal next hand</Button>
+                </div>
+              ))}
 
             <div className="mt-4 flex justify-center gap-2">
               {isSeated && !winnerSide && (

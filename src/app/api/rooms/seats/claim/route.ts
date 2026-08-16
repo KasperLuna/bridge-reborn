@@ -44,6 +44,13 @@ export async function POST(req: Request) {
     if (room.status === "finished") {
       return NextResponse.json({ error: "Room is finished" }, { status: 409 });
     }
+    // Pairs games fix each human to a partnership; seats are not claimed singly.
+    if (body.seat !== null && room.mode === "pairs") {
+      return NextResponse.json(
+        { error: "Seats are fixed in 2-player games" },
+        { status: 409 },
+      );
+    }
     // Spectators may claim a seat after the current hand ends, not mid-hand.
     if (room.status === "active") {
       const active = await getActiveHand(pb, body.roomId);

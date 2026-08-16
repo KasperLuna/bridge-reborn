@@ -35,8 +35,8 @@ type GameState = {
   setError: (error: string | null) => void;
   setPending: (pending: boolean) => void;
   reset: () => void;
-  bid: (call: string) => Promise<void>;
-  play: (card: string) => Promise<void>;
+  bid: (call: string, seatId?: string) => Promise<void>;
+  play: (card: string, seatId?: string) => Promise<void>;
   concede: (action: "concede" | "leave") => Promise<void>;
   startNewGame: () => Promise<void>;
 };
@@ -80,13 +80,14 @@ export const useGameStore = create<GameState>((set, get) => ({
       pending: false,
     }),
 
-  bid: async (call) => {
+  bid: async (call, seatId) => {
     const session = requireSession();
     const hand = get().hand;
     if (!hand) return;
+    const actor = seatId ? { ...session, seatId } : session;
     set({ pending: true, error: null });
     try {
-      await api.submitBid(session, hand.id, call);
+      await api.submitBid(actor, hand.id, call);
     } catch (err) {
       set({ error: err instanceof Error ? err.message : "Bid failed" });
     } finally {
@@ -94,13 +95,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     }
   },
 
-  play: async (card) => {
+  play: async (card, seatId) => {
     const session = requireSession();
     const hand = get().hand;
     if (!hand) return;
+    const actor = seatId ? { ...session, seatId } : session;
     set({ pending: true, error: null });
     try {
-      await api.playCard(session, hand.id, card);
+      await api.playCard(actor, hand.id, card);
     } catch (err) {
       set({ error: err instanceof Error ? err.message : "Play failed" });
     } finally {

@@ -38,6 +38,14 @@ export function joinRoom(
   return post<Session>("/api/rooms/join", { code, username, wantSpectator });
 }
 
+/** Starts a quick game: `solo` (1 human + 3 bots) or `pairs` (2 humans). */
+export function quickGame(
+  mode: "solo" | "pairs",
+  username: string,
+): Promise<Session> {
+  return post<Session>("/api/rooms/quick", { mode, username });
+}
+
 export function claimSeat(
   session: Session,
   seat: Seat | null,

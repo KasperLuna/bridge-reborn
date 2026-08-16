@@ -95,7 +95,9 @@ export function playTurnSeat(
 ): Seat | null {
   const trick = currentTrick(tricks);
   if (trick) {
-    const leader = seatOfUsername(p, trick.leader_username);
+    const leader =
+      (trick.leader_seat as Seat | undefined) ??
+      seatOfUsername(p, trick.leader_username);
     if (!leader) return null;
     return nextPlayerToPlay(leader, trickPlaysFor(trick.id, plays).length);
   }
@@ -105,7 +107,10 @@ export function playTurnSeat(
     .filter((t) => t.winner_username)
     .sort((a, b) => b.trick_number - a.trick_number)[0];
   if (lastWon) {
-    return seatOfUsername(p, lastWon.winner_username);
+    return (
+      (lastWon.winner_seat as Seat | undefined) ??
+      seatOfUsername(p, lastWon.winner_username)
+    );
   }
   return declarerSeat ? leftOf(declarerSeat) : null;
 }

@@ -161,7 +161,7 @@ export default function RoomPage() {
                   isMe={session ? rec.id === session.seatId : false}
                   ready={rec.ready}
                 />
-              ) : session ? (
+              ) : session && room?.mode !== "pairs" ? (
                 <button
                   type="button"
                   disabled={busy}
@@ -265,7 +265,22 @@ export default function RoomPage() {
 
             {/* Primary action */}
             {room?.status === "waiting" &&
-              (isSeated ? (
+              (room?.mode === "pairs" ? (
+                isSeated ? (
+                  <div className="rounded-2xl border border-cream/10 bg-felt-deep/70 px-4 py-3 text-center backdrop-blur">
+                    <p className="text-[10px] font-semibold tracking-[0.3em] text-cream-dim/70 uppercase">
+                      Waiting for opponent
+                    </p>
+                    <p className="mt-0.5 text-sm text-cream">
+                      Share code {code} — they take the opposite side.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="rounded-2xl border border-dashed border-cream/15 px-4 py-3 text-center text-sm text-cream-dim">
+                    This is a 2-player table. Joining takes the free side.
+                  </p>
+                )
+              ) : isSeated ? (
                 <div className="flex flex-col gap-2">
                   <Button
                     variant={myRecord?.ready ? "ghost" : "primary"}
@@ -295,7 +310,7 @@ export default function RoomPage() {
 
             {/* Secondary actions */}
             <div className="flex flex-wrap items-center justify-center gap-2">
-              {isSeated && room?.status === "waiting" && (
+              {isSeated && room?.mode === "four" && room?.status === "waiting" && (
                 <label className="flex items-center gap-2 text-sm text-cream-dim">
                   <span>Ruleset</span>
                   <select

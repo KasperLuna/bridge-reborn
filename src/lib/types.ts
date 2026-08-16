@@ -8,10 +8,15 @@ import type {
 
 export type RoomStatus = "waiting" | "active" | "finished";
 
+/** `four` = 4 humans, one seat each. `pairs` = 2 humans, one partnership
+    each. `solo` = 1 human + 3 bot seats. */
+export type RoomMode = "four" | "pairs" | "solo";
+
 export type Room = {
   id: string;
   code: string;
   status: RoomStatus;
+  mode: RoomMode;
   ruleset: unknown;
   started_at: string;
   ended_at: string;
@@ -19,13 +24,15 @@ export type Room = {
   updated: string;
 };
 
-/** One seat record per (room, username). `seat` is `""` for spectators. */
+/** One seat record per (room, username). `seat` is `""` for spectators. In
+    `pairs` mode a human owns two records (both seats of one partnership). */
 export type RoomSeat = {
   id: string;
   room_id: string;
   username: string;
   seat: Seat | "";
   is_spectator: boolean;
+  is_bot: boolean;
   ready: boolean;
   joined_at: string;
   created: string;
@@ -79,6 +86,8 @@ export type ContractRecord = {
   id: string;
   hand_id: string;
   declarer_username: string;
+  /** The declarer's seat (explicit — usernames can own two seats in pairs mode). */
+  declarer_seat: Seat;
   level: string;
   strain: Strain;
   doubled: boolean;
@@ -92,7 +101,11 @@ export type TrickRecord = {
   hand_id: string;
   trick_number: number;
   leader_username: string;
+  /** The seat that led this trick (explicit — usernames own two seats in pairs). */
+  leader_seat: Seat;
   winner_username: string;
+  /** The seat that won this trick (explicit, so the next leader is exact). */
+  winner_seat: Seat;
   created: string;
   updated: string;
 };
@@ -102,6 +115,8 @@ export type PlayRecord = {
   trick_id: string;
   hand_id: string;
   username: string;
+  /** The seat that played (explicit — usernames own two seats in pairs). */
+  seat: Seat;
   play_sequence: number;
   card: string;
   created: string;

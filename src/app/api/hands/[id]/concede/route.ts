@@ -53,19 +53,21 @@ export async function POST(
     const side = partnershipOf(seatOf(seat));
     const winnerSide = opponentsOf(side);
     const endedAt = new Date().toISOString();
+    // games.end_reason accepts "conceded" | "left" (see pb_schema.json).
+    const endReason = body.action === "concede" ? "conceded" : "left";
 
     await pb.collection("hands").update(hand.id, { ended_at: endedAt });
     await pb.collection("games").update(game.id, {
       ended_at: endedAt,
       winner_side: winnerSide,
-      end_reason: body.action,
+      end_reason: endReason,
     });
     await pb.collection("rooms").update(body.roomId, {
       status: "finished",
       ended_at: endedAt,
     });
 
-    return NextResponse.json({ ok: true, winnerSide, reason: body.action });
+    return NextResponse.json({ ok: true, winnerSide, reason: endReason });
   } catch (err) {
     return errorResponse(err);
   }

@@ -202,7 +202,15 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["1", "2", "3", "4", "5", "6", "7"]
+        "values": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
       },
       {
         "help": "",
@@ -214,7 +222,13 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["C", "D", "H", "S", "NT"]
+        "values": [
+          "C",
+          "D",
+          "H",
+          "S",
+          "NT"
+        ]
       },
       {
         "help": "",
@@ -235,6 +249,23 @@
         "required": false,
         "system": false,
         "type": "bool"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "select1000000007",
+        "maxSelect": 1,
+        "name": "declarer_seat",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "select",
+        "values": [
+          "N",
+          "S",
+          "E",
+          "W"
+        ]
       }
     ],
     "indexes": [],
@@ -702,7 +733,12 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["N", "S", "E", "W"]
+        "values": [
+          "N",
+          "S",
+          "E",
+          "W"
+        ]
       },
       {
         "help": "",
@@ -714,7 +750,12 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["none", "ns", "ew", "both"]
+        "values": [
+          "none",
+          "ns",
+          "ew",
+          "both"
+        ]
       },
       {
         "help": "",
@@ -881,6 +922,23 @@
         "required": true,
         "system": false,
         "type": "text"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "select1000000009",
+        "maxSelect": 1,
+        "name": "seat",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "select",
+        "values": [
+          "N",
+          "S",
+          "E",
+          "W"
+        ]
       }
     ],
     "indexes": [],
@@ -970,7 +1028,12 @@
         "required": false,
         "system": false,
         "type": "select",
-        "values": ["N", "S", "E", "W"]
+        "values": [
+          "N",
+          "S",
+          "E",
+          "W"
+        ]
       },
       {
         "help": "",
@@ -999,6 +1062,15 @@
         "hidden": false,
         "id": "bool680887727",
         "name": "ready",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      },
+      {
+        "hidden": false,
+        "id": "bool1000000002",
+        "name": "is_bot",
         "presentable": false,
         "required": false,
         "system": false,
@@ -1089,7 +1161,11 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["waiting", "active", "finished"]
+        "values": [
+          "waiting",
+          "active",
+          "finished"
+        ]
       },
       {
         "help": "",
@@ -1114,6 +1190,22 @@
         "required": false,
         "system": false,
         "type": "date"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "select100000002",
+        "maxSelect": 1,
+        "name": "mode",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "select",
+        "values": [
+          "four",
+          "pairs",
+          "solo"
+        ]
       }
     ],
     "indexes": [],
@@ -1220,6 +1312,40 @@
         "required": false,
         "system": false,
         "type": "text"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "select1000000008",
+        "maxSelect": 1,
+        "name": "leader_seat",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "select",
+        "values": [
+          "N",
+          "S",
+          "E",
+          "W"
+        ]
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "select1000000009",
+        "maxSelect": 1,
+        "name": "winner_seat",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "select",
+        "values": [
+          "N",
+          "S",
+          "E",
+          "W"
+        ]
       }
     ],
     "indexes": [],

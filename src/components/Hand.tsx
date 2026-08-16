@@ -77,7 +77,11 @@ export function Hand({
               damping: 26,
               delay: i * 0.02,
             }}
-            whileHover={{ y: y - 26, scale: 1.12, rotate: 0, zIndex: 60 }}
+            whileHover={
+              clickable
+                ? { y: y - 26, scale: 1.12, rotate: 0, zIndex: 60 }
+                : undefined
+            }
             whileTap={clickable ? { scale: 0.92 } : undefined}
           >
             <div

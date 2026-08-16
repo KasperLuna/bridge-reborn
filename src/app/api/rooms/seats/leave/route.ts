@@ -36,13 +36,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Not allowed" }, { status: 403 });
     }
 
-    // Soft-leave: keep the seat record — other tabs sharing this username
-    // reference the same seatId — but step out to spectator so the slot frees.
-    await pb.collection("room_seats").update(body.seatId, {
-      seat: "",
-      is_spectator: true,
-      ready: false,
+    // In pairs mode a human owns two records (one partnership); in four mode
+    // just one. Soft-leave them all so the whole side steps out to spectator
+    // and every slot frees. Other tabs sharing this username reference the
+    // same records, so keep them rather than deleting.
+    const mine = await pb.collection("room_seats").getFullList<RoomSeat>({
+      filter: pb.filter(
+        "room_id = {:roomId} && username = {:username} && is_spectator = false",
+        { roomId: body.roomId, username: body.username },
+      ),
     });
+    await Promise.all(
+      mine.map((s) =>
+        pb.collection("room_seats").update(s.id, {
+          seat: "",
+          is_spectator: true,
+          ready: false,
+        }),
+      ),
+    );
 
     // Send the room back to the lobby unless a concede already finished it.
     const room = await pb

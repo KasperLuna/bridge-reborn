@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { AuctionEntry } from "@/lib/game/bidding";
 import {
   bidValue,
+  declarerSeat,
   declarerUsername,
   finalContract,
   isAuctionComplete,
@@ -19,6 +20,7 @@ import {
 import { resolveRuleset } from "@/lib/rulesets";
 import type { BidRecord, ContractRecord, Game, Hand } from "@/lib/types";
 import { errorResponse } from "@/server/errors";
+import { runBotTurns } from "@/server/bots";
 import {
   gamePlayers,
   openerSeat,
@@ -147,38 +149,41 @@ export async function POST(
       ...entries,
       { call: body.call, username: body.username, side: actorSide },
     ];
-    if (!isAuctionComplete(nextEntries)) {
-      return NextResponse.json({ ok: true });
+    let out: Record<string, unknown> = { ok: true };
+    if (isAuctionComplete(nextEntries)) {
+      const contract = finalContract(nextEntries);
+      if (!contract) {
+        // Passed out: no contract, no score. Close the hand and reset ready.
+        await pb.collection("hands").update(handId, {
+          ended_at: new Date().toISOString(),
+        });
+        await unreadyRoomPlayers(pb, game.room_id);
+        out = { ok: true, passedOut: true };
+      } else {
+        // Create the contract once (guard against concurrent duplicate).
+        const existing = await pb
+          .collection("contracts")
+          .getList<ContractRecord>(1, 1, {
+            filter: pb.filter("hand_id = {:handId}", { handId }),
+          });
+        if (existing.items.length === 0) {
+          const declarer = declarerSeat(nextEntries, opener);
+          await pb.collection("contracts").create<ContractRecord>({
+            hand_id: handId,
+            declarer_username: declarerUsername(nextEntries)!,
+            declarer_seat: declarer ?? expectedSeat,
+            level: String(contract.level),
+            strain: contract.strain,
+            doubled: contract.doubled,
+            redoubled: contract.redoubled,
+          });
+        }
+      }
     }
 
-    const contract = finalContract(nextEntries);
-    if (!contract) {
-      // Passed out: no contract, no score. Close the hand and reset ready.
-      await pb.collection("hands").update(handId, {
-        ended_at: new Date().toISOString(),
-      });
-      await unreadyRoomPlayers(pb, game.room_id);
-      return NextResponse.json({ ok: true, passedOut: true });
-    }
-
-    // Create the contract once (guard against concurrent duplicate).
-    const existing = await pb
-      .collection("contracts")
-      .getList<ContractRecord>(1, 1, {
-        filter: pb.filter("hand_id = {:handId}", { handId }),
-      });
-    if (existing.items.length === 0) {
-      await pb.collection("contracts").create<ContractRecord>({
-        hand_id: handId,
-        declarer_username: declarerUsername(nextEntries)!,
-        level: String(contract.level),
-        strain: contract.strain,
-        doubled: contract.doubled,
-        redoubled: contract.redoubled,
-      });
-    }
-
-    return NextResponse.json({ ok: true });
+    // Drive any bots that are now due (they may continue into the play phase).
+    if (!seat.is_bot) await runBotTurns(pb, handId);
+    return NextResponse.json(out);
   } catch (err) {
     return errorResponse(err);
   }
