@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { cardSuit } from "@/lib/game/cards";
-import { solveDoubleDummy } from "@/lib/game/dd-solver";
+import { solveDoubleDummy } from "@/server/dd";
 import {
   leftOf,
   opponentsOf,
@@ -299,28 +299,26 @@ export async function POST(
         // Reset ready flags so players must re-ready before the next hand.
         await unreadyRoomPlayers(pb, hand.room_id);
 
-        // Best-effort double-dummy solve for the contract strain; never blocks
-        // hand end. Lands in hands.dd_result via realtime once it finishes.
-        void (async () => {
-          try {
-            const maxTricks = solveDoubleDummy(
-              hand.deal,
-              contract.strain,
-              declarerSeat!,
-            );
-            if (maxTricks !== null) {
-              await pb.collection("hands").update(handId, {
-                dd_result: {
-                  strain: contract.strain,
-                  side: declarerSide,
-                  maxTricks,
-                },
-              });
-            }
-          } catch {
-            // best-effort
+        // Best-effort double-dummy solve for the contract strain; null on
+        // solver failure leaves dd_result unset.
+        try {
+          const maxTricks = await solveDoubleDummy(
+            hand.deal,
+            contract.strain,
+            declarerSeat!,
+          );
+          if (maxTricks !== null) {
+            await pb.collection("hands").update(handId, {
+              dd_result: {
+                strain: contract.strain,
+                side: declarerSide,
+                maxTricks,
+              },
+            });
           }
-        })();
+        } catch {
+          // best-effort
+        }
       }
     }
   } catch (err) {
