@@ -504,14 +504,17 @@ export default function GamePage() {
     void play(card, seatId);
   }
 
+  // The hands render twice — side column on lg+, footer on phones — so the
+  // plain querySelector can grab the display:none copy (rect reads as 0,0).
+  const visibleEl = (sel: string) =>
+    [...document.querySelectorAll<HTMLElement>(sel)].find(
+      (el) => el.offsetParent !== null,
+    ) ?? null;
+
   function confirmPlay() {
     if (!staged) return;
-    const fromEl = document.querySelector<HTMLElement>(
-      `[data-hand-card="${staged.card}"]`,
-    );
-    const toEl = document.querySelector<HTMLElement>(
-      `[data-trick-slot="${staged.seat}"]`,
-    );
+    const fromEl = visibleEl(`[data-hand-card="${staged.card}"]`);
+    const toEl = visibleEl(`[data-trick-slot="${staged.seat}"]`);
     const from = fromEl?.getBoundingClientRect();
     const to = toEl?.getBoundingClientRect();
     if (from && to) {
