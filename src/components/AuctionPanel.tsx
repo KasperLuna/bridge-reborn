@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import type { LegalCalls } from "@/lib/game/bidding";
 import { bidValue } from "@/lib/game/bidding";
 import type { Strain } from "@/lib/game/types";
@@ -20,7 +22,9 @@ export type AuctionEntryView = {
 export function AuctionChips({ entries }: { entries: AuctionEntryView[] }) {
   const lastEntries = entries.slice(-6);
   if (lastEntries.length === 0) {
-    return <span className="text-sm text-cream-dim/50">Auction opens here</span>;
+    return (
+      <span className="text-sm text-cream-dim/50">Auction opens here</span>
+    );
   }
   return (
     <>
@@ -45,26 +49,40 @@ export function AuctionChips({ entries }: { entries: AuctionEntryView[] }) {
   );
 }
 
+/** Confirm-row wording for a staged call. */
+function bidLabel(call: string): string {
+  if (call === "P") return "Pass?";
+  if (call === "X") return "Double?";
+  if (call === "XX") return "Redouble?";
+  return `Bid ${call}?`;
+}
+
+function bidConfirm(call: string): string {
+  if (call === "P") return "Pass";
+  if (call === "X") return "Double";
+  if (call === "XX") return "Redouble";
+  return "Bid";
+}
+
 export function AuctionPanel({
   entries,
   legal,
   myTurn,
   disabled,
-  staged = null,
   onCall,
 }: {
   entries: AuctionEntryView[];
   legal: LegalCalls;
   myTurn: boolean;
   disabled: boolean;
-  staged?: string | null;
   onCall: (call: string) => void;
 }) {
+  const [staged, setStaged] = useState<string | null>(null);
+  const locked = disabled || !myTurn;
   const selected = (call: string) =>
     staged === call
       ? "border-lime/60 bg-lime/15 text-lime"
       : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime";
-  const locked = disabled || !myTurn;
 
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-cream/10 bg-felt-deep/70 p-3 backdrop-blur">
@@ -79,7 +97,7 @@ export function AuctionPanel({
           variant="ghost"
           className={`flex-1 ${selected("P")}`}
           disabled={locked || !legal.canPass}
-          onClick={() => onCall("P")}
+          onClick={() => setStaged((cur) => (cur === "P" ? null : "P"))}
         >
           Pass
         </Button>
@@ -87,7 +105,7 @@ export function AuctionPanel({
           variant="ghost"
           className={`flex-1 ${selected("X")}`}
           disabled={locked || !legal.canDouble}
-          onClick={() => onCall("X")}
+          onClick={() => setStaged((cur) => (cur === "X" ? null : "X"))}
         >
           Double
         </Button>
@@ -95,7 +113,7 @@ export function AuctionPanel({
           variant="ghost"
           className={`flex-1 ${selected("XX")}`}
           disabled={locked || !legal.canRedouble}
-          onClick={() => onCall("XX")}
+          onClick={() => setStaged((cur) => (cur === "XX" ? null : "XX"))}
         >
           Redouble
         </Button>
@@ -115,7 +133,7 @@ export function AuctionPanel({
                 key={call}
                 type="button"
                 disabled={locked || !allowed}
-                onClick={() => onCall(call)}
+                onClick={() => setStaged((cur) => (cur === call ? null : call))}
                 className={`min-h-8 rounded-lg border text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${selected(
                   call,
                 )}`}
@@ -124,6 +142,27 @@ export function AuctionPanel({
               </button>
             );
           }),
+        )}
+      </div>
+
+      {/* Confirm row: always reserved so staging never shifts the panel. */}
+      <div className="flex h-11 items-center justify-center gap-2">
+        {staged && (
+          <>
+            <span className="text-sm text-cream">{bidLabel(staged)}</span>
+            <Button
+              disabled={disabled}
+              onClick={() => {
+                setStaged(null);
+                onCall(staged);
+              }}
+            >
+              {bidConfirm(staged)}
+            </Button>
+            <Button variant="ghost" onClick={() => setStaged(null)}>
+              Cancel
+            </Button>
+          </>
         )}
       </div>
     </div>

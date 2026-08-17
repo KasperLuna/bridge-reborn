@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "motion/react";
 
-import { AuctionPanel } from "@/components/AuctionPanel";
+import { AuctionChips, AuctionPanel } from "@/components/AuctionPanel";
 import { Hand } from "@/components/Hand";
 import { KickDialog } from "@/components/KickPanel";
 import {
@@ -54,21 +54,6 @@ function seatOfPlay(pl: PlayRecord, p: GamePlayers): Seat {
   return seatOfUsername(p, pl.username) ?? "N";
 }
 
-/** Confirm-row wording for a staged call. */
-function bidLabel(call: string): string {
-  if (call === "P") return "Pass?";
-  if (call === "X") return "Double?";
-  if (call === "XX") return "Redouble?";
-  return `Bid ${call}?`;
-}
-
-function bidConfirm(call: string): string {
-  if (call === "P") return "Pass";
-  if (call === "X") return "Double";
-  if (call === "XX") return "Redouble";
-  return "Bid";
-}
-
 export default function GamePage() {
   const params = useParams<{ code: string }>();
   const router = useRouter();
@@ -98,7 +83,6 @@ export default function GamePage() {
   const [spectatorVisible, setSpectatorVisible] = useState(false);
   const [handSort, setHandSort] = useState<"suit" | "rank">("suit");
   const [staged, setStaged] = useState<{ card: Card; seat: Seat } | null>(null);
-  const [stagedBid, setStagedBid] = useState<string | null>(null);
   const [playAnim, setPlayAnim] = useState<{
     card: Card;
     seat: Seat;
@@ -304,23 +288,6 @@ export default function GamePage() {
   const myBidTurn = mySeatData.some((d) => d.isBidTurn);
   const activeBidSeat = mySeatData.find((d) => d.isBidTurn) ?? null;
 
-  // Drop a staged bid when the turn moves on (another player acted or the
-  // auction ended) so stale confirm rows never fire a late call.
-  useEffect(() => {
-    if (!myBidTurn) setStagedBid(null);
-  }, [myBidTurn]);
-
-  function handleBidClick(call: string) {
-    setStagedBid((cur) => (cur === call ? null : call));
-  }
-
-  function confirmBid() {
-    if (!stagedBid) return;
-    const call = stagedBid;
-    setStagedBid(null);
-    void bid(call, activeBidSeat?.seatId);
-  }
-
   // The full bid panel sits in the felt center on sm+, but on phones it docks
   // in the footer (below the table) so it can't overlap the seat badges and
   // takes the space the hand would otherwise use. Rendered in both spots, one
@@ -332,8 +299,7 @@ export default function GamePage() {
         legal={activeBidSeat.bidInfo}
         myTurn
         disabled={pending}
-        staged={stagedBid}
-        onCall={handleBidClick}
+        onCall={(call) => void bid(call, activeBidSeat.seatId)}
       />
     ) : null;
 
@@ -732,19 +698,6 @@ export default function GamePage() {
                     </Button>
                   </>
                 )}
-              </div>
-            )}
-            {phase === "auction" && myBidTurn && stagedBid && (
-              <div className="mb-2 flex h-11 items-center justify-center gap-2">
-                <span className="text-sm text-cream">
-                  {bidLabel(stagedBid)}
-                </span>
-                <Button onClick={confirmBid} disabled={pending}>
-                  {bidConfirm(stagedBid)}
-                </Button>
-                <Button variant="ghost" onClick={() => setStagedBid(null)}>
-                  Cancel
-                </Button>
               </div>
             )}
             {mySeatData.map((d) => {
