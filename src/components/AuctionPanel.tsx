@@ -100,7 +100,9 @@ export function AuctionPanel({
                 type="button"
                 disabled={locked || !allowed}
                 onClick={() => onCall(call)}
-                className="min-h-8 rounded-lg border border-cream/10 bg-cream/5 text-sm font-semibold text-cream transition-colors hover:border-lime/60 hover:text-lime disabled:cursor-not-allowed disabled:opacity-30"
+                className={`min-h-8 rounded-lg border text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${selected(
+                  call,
+                )}`}
               >
                 {call}
               </button>
