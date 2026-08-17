@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "motion/react";
+import { Settings } from "lucide-react";
 
 import { AuctionChips, AuctionPanel } from "@/components/AuctionPanel";
 import { Hand } from "@/components/Hand";
@@ -464,8 +465,11 @@ export default function GamePage() {
             variant="ghost"
             disabled={pending}
             onClick={() => setMenuOpen((o) => !o)}
+            className="px-3 sm:px-4"
+            aria-label="Options"
           >
-            Options
+            <Settings className="h-4 w-4" />
+            <span className="hidden sm:inline">Options</span>
           </Button>
           {menuOpen && (
             <>
@@ -737,7 +741,7 @@ export default function GamePage() {
                           ? () => {}
                           : undefined
                     }
-                    size="md"
+                    size={phase === "auction" ? "sm" : "md"}
                     compact={mySeats.length > 1}
                   />
                 </div>

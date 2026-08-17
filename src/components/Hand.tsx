@@ -53,14 +53,16 @@ export function Hand({
   const dense = n > 8;
   // Narrow screens: tuck the fan together so the spread stays on screen.
   const k = narrow ? 0.95 : 1;
-  const step = k * (dense ? 2.4 : 3.5);
-  const offset = k * (dense ? 26 : 38);
-  const depth = k * (dense ? 1.4 : 2.4);
+  // Smaller cards (auction/compact) spread tighter and rise less.
+  const s = size === "sm" ? 0.7 : 1;
+  const step = k * s * (dense ? 2.4 : 3.5);
+  const offset = k * s * (dense ? 26 : 38);
+  const depth = k * s * (dense ? 1.4 : 2.4);
 
   return (
     <div
-      className={`relative flex h-36 items-end justify-center pb-1 sm:pb-0 ${
-        compact ? "" : "sm:h-52"
+      className={`relative flex items-end justify-center pb-1 sm:pb-0 ${
+        size === "sm" ? "h-24 sm:h-36" : compact ? "h-36" : "h-36 sm:h-52"
       }`}
     >
       {cards.map((card, i) => {

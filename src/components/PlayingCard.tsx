@@ -73,8 +73,9 @@ export function PlayingCard({
         aria-label={`Play ${card}`}
         className={`${SIZES[size]} relative bg-cream p-0.5 shadow-lg transition-all ${color} ${interactive} ${dimmed ? "brightness-90 saturate-[0.35]" : ""}`}
       >
-        <span className="absolute top-0.5 left-1 leading-none font-bold">
-          {rank}
+        <span className="absolute top-0.5 left-1 flex flex-col items-start leading-none">
+          <span className="font-bold">{rank}</span>
+          <span className="text-[0.8em]">{GLYPHS[suit]}</span>
         </span>
         <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl leading-none">
           {GLYPHS[suit]}
