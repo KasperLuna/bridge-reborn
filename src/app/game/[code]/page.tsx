@@ -27,8 +27,9 @@ import { useGameSync } from "@/hooks/useGameSync";
 import { useRoomSync } from "@/hooks/useRoomSync";
 import { useTurnAlerts } from "@/hooks/useTurnAlerts";
 import { sortHand, sortHandByRank } from "@/lib/game/cards";
+import { ddOutcome } from "@/lib/game/dd-solver";
 import { opponentsOf, partnershipOf, seatOfUsername } from "@/lib/game/seats";
-import type { Card, GamePlayers, Seat } from "@/lib/game/types";
+import type { Card, DdResult, GamePlayers, Seat } from "@/lib/game/types";
 import { resolveRuleset } from "@/lib/rulesets";
 import { badgeClass, SEATS, seatDir } from "@/lib/table-layout";
 import type { HandResultRecord, PlayRecord, RoomMode } from "@/lib/types";
@@ -861,6 +862,7 @@ export default function GamePage() {
       {handOver && (
         <HandOverOverlay
           result={result}
+          ddResult={hand.dd_result}
           contractShorthand={contractShorthand(contract)}
           nsTricks={nsTricks}
           ewTricks={ewTricks}
@@ -939,6 +941,7 @@ function AuctionHistoryModal({
 
 function HandOverOverlay({
   result,
+  ddResult,
   contractShorthand,
   nsTricks,
   ewTricks,
@@ -959,6 +962,8 @@ function HandOverOverlay({
   onReplay,
 }: {
   result: HandResultRecord | null;
+  /** Double-dummy solve for the just-finished hand, if one completed. */
+  ddResult: DdResult | null;
   contractShorthand: string;
   /** Tricks won by each partnership in the just-finished hand. */
   nsTricks: number;
@@ -1080,6 +1085,13 @@ function HandOverOverlay({
                     <span className="text-xs">tricks</span>
                   </span>
                 </div>
+                {ddResult && result && (
+                  <DdVerdictLine
+                    maxTricks={ddResult.maxTricks}
+                    tricksMade={result.tricks_made}
+                    tricksRequired={result.tricks_required}
+                  />
+                )}
               </>
             )}
 
@@ -1139,5 +1151,30 @@ function HandOverOverlay({
         )}
       </div>
     </div>
+  );
+}
+
+/** "Upset!" when the result contradicts double-dummy; otherwise a muted
+    double-dummy readout. */
+function DdVerdictLine({
+  maxTricks,
+  tricksMade,
+  tricksRequired,
+}: {
+  maxTricks: number;
+  tricksMade: number;
+  tricksRequired: number;
+}) {
+  const outcome = ddOutcome({ maxTricks }, tricksMade, tricksRequired);
+  if (!outcome) return null;
+  return (
+    <p
+      className={`mt-3 text-xs tracking-[0.25em] uppercase ${
+        outcome.upset ? "font-bold text-danger" : "text-cream-dim/70"
+      }`}
+    >
+      {outcome.upset ? "Upset! " : ""}
+      Double-dummy: {maxTricks} tricks
+    </p>
   );
 }

@@ -12,6 +12,14 @@ export type Partnership = "NS" | "EW";
 
 export type Strain = Suit | "NT";
 
+/** Stored per-hand double-dummy solve: declarer side's max tricks on the
+    contract's strain. `maxTricks` is with perfect play on both sides. */
+export type DdResult = {
+  strain: Strain;
+  side: Partnership;
+  maxTricks: number;
+};
+
 export type Vulnerability = "none" | "ns" | "ew" | "both";
 
 export type OpenerRule = "twoClubHolder" | "dealer" | "leftOfDealer";

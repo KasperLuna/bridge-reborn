@@ -54,4 +54,5 @@ Open http://localhost:3000.
 
 - PocketBase maps to host port `8091` (the sibling `bridge` repo already uses
   `8090`). Change `docker-compose.yml` + `.env` together if you need another port.
-- `DD_SOLVER_URL` is optional and best-effort; the hand still plays without it.
+- Double-dummy results are computed natively in `src/lib/game/dd-solver.ts`
+  (pure TS, no external service) and stored on `hands.dd_result`.

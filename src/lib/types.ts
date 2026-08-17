@@ -1,4 +1,10 @@
-import type { Deal, Partnership, Seat, Strain } from "@/lib/game/types";
+import type {
+  Deal,
+  DdResult,
+  Partnership,
+  Seat,
+  Strain,
+} from "@/lib/game/types";
 
 export type RoomStatus = "waiting" | "active" | "finished";
 
@@ -58,7 +64,7 @@ export type Hand = {
   east_username: string;
   west_username: string;
   deal: Deal;
-  dd_result: unknown;
+  dd_result: DdResult | null;
   started_at: string;
   ended_at: string;
   winner_side: Partnership | "";

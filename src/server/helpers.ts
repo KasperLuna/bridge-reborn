@@ -1,7 +1,6 @@
 import type PocketBase from "pocketbase";
 
-import { serverEnv } from "@/env";
-import type { Deal, GamePlayers, Seat } from "@/lib/game/types";
+import type { GamePlayers, Seat } from "@/lib/game/types";
 import { buildShuffledDeal } from "@/lib/game/cards";
 import { resolveOpener } from "@/lib/game/bidding";
 import { playersFromUsernames } from "@/lib/game/seats";
@@ -168,29 +167,5 @@ export async function createHand(
     started_at: startedAt,
   });
 
-  void solveDoubleDummy(pb, hand, hand.deal);
-
   return hand;
-}
-
-/** Best-effort double-dummy fill; never blocks or fails game creation. */
-async function solveDoubleDummy(
-  pb: PocketBase,
-  hand: Hand,
-  deal: Deal,
-): Promise<void> {
-  const url = serverEnv.DD_SOLVER_URL;
-  if (!url) return;
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ deal }),
-    });
-    if (!res.ok) return;
-    const dd = (await res.json()) as unknown;
-    await pb.collection("hands").update(hand.id, { dd_result: dd });
-  } catch {
-    // best-effort
-  }
 }
