@@ -179,8 +179,6 @@ export async function createGameWithHand(
     south_username: bySeat.get("S")!.username,
     east_username: bySeat.get("E")!.username,
     west_username: bySeat.get("W")!.username,
-    ns_total_score: 0,
-    ew_total_score: 0,
     started_at: startedAt,
   });
 

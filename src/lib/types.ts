@@ -64,8 +64,6 @@ export type Game = {
   south_username: string;
   east_username: string;
   west_username: string;
-  ns_total_score: number;
-  ew_total_score: number;
   started_at: string;
   ended_at: string;
   winner_side: Partnership | "";

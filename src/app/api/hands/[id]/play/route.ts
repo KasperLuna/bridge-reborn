@@ -291,10 +291,6 @@ export async function POST(
             ns_imp_delta: 0,
             ew_imp_delta: 0,
           });
-          await pb.collection("games").update(game.id, {
-            ns_total_score: (game.ns_total_score ?? 0) + nsScore,
-            ew_total_score: (game.ew_total_score ?? 0) + ewScore,
-          });
         } catch (err) {
           // Concurrent finish: unique hand_id clash means another request won.
           const raced = await pb

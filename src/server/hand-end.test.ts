@@ -187,8 +187,6 @@ async function setupHand() {
     south_username: "US",
     east_username: "UE",
     west_username: "UW",
-    ns_total_score: 0,
-    ew_total_score: 0,
     started_at: "",
     ended_at: "",
     winner_side: "",

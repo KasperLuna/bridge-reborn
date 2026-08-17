@@ -859,8 +859,6 @@ export default function GamePage() {
         <HandOverOverlay
           result={result}
           contractShorthand={contractShorthand(contract)}
-          nsScore={game.ns_total_score}
-          ewScore={game.ew_total_score}
           nsTricks={nsTricks}
           ewTricks={ewTricks}
           hands={inspectHands}
@@ -939,8 +937,6 @@ function AuctionHistoryModal({
 function HandOverOverlay({
   result,
   contractShorthand,
-  nsScore,
-  ewScore,
   nsTricks,
   ewTricks,
   hands,
@@ -961,8 +957,6 @@ function HandOverOverlay({
 }: {
   result: HandResultRecord | null;
   contractShorthand: string;
-  nsScore: number;
-  ewScore: number;
   /** Tricks won by each partnership in the just-finished hand. */
   nsTricks: number;
   ewTricks: number;
@@ -1069,16 +1063,16 @@ function HandOverOverlay({
                   <span className="text-cream-dim">
                     NS{" "}
                     <span className="font-display text-lg text-cream">
-                      {nsScore}
+                      {nsTricks}
                     </span>{" "}
-                    <span className="text-xs">· {nsTricks} tricks</span>
+                    <span className="text-xs">tricks</span>
                   </span>
                   <span className="text-cream-dim">
                     EW{" "}
                     <span className="font-display text-lg text-cream">
-                      {ewScore}
+                      {ewTricks}
                     </span>{" "}
-                    <span className="text-xs">· {ewTricks} tricks</span>
+                    <span className="text-xs">tricks</span>
                   </span>
                 </div>
               </>
