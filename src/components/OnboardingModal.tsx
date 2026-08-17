@@ -43,12 +43,12 @@ function SeatDot({ label, on }: { label: string; on: boolean }) {
 
 function TableVisual() {
   return (
-    <div className="felt relative mx-auto grid h-40 w-40 place-items-center rounded-full">
+    <div className="felt relative mx-auto grid h-48 w-48 place-items-center rounded-full">
       <span className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(60%_60%_at_50%_50%,transparent_55%,rgb(0_0_0/20%))]" />
       <p className="absolute top-2 text-[9px] tracking-[0.25em] text-cream-dim/60 uppercase">
         Your team
       </p>
-      <div className="flex gap-6">
+      <div className="grid grid-cols-3 items-center gap-2">
         <div className="flex flex-col items-center gap-1.5">
           <span className="text-xs font-bold text-lime">N + S</span>
           <div className="flex gap-2">
@@ -56,7 +56,7 @@ function TableVisual() {
             <SeatDot label="S" on />
           </div>
         </div>
-        <span className="self-center text-2xl font-black text-cream/25">
+        <span className="justify-self-center text-2xl font-black text-cream/25">
           VS
         </span>
         <div className="flex flex-col items-center gap-1.5">
