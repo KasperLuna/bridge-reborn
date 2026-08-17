@@ -18,7 +18,7 @@ import {
   usernameForSeat,
 } from "@/lib/game/seats";
 import { resolveRuleset } from "@/lib/rulesets";
-import type { BidRecord, ContractRecord, Game, Hand } from "@/lib/types";
+import type { BidRecord, ContractRecord, Hand } from "@/lib/types";
 import { errorResponse } from "@/server/errors";
 import { runBotTurns } from "@/server/bots";
 import {
@@ -72,14 +72,13 @@ export async function POST(
       );
     }
 
-    const game = await pb.collection("games").getOne<Game>(hand.game_id);
-    if (game.room_id !== body.roomId) {
+    if (hand.room_id !== body.roomId) {
       return NextResponse.json({ error: "Room mismatch" }, { status: 400 });
     }
 
     const room = await pb
       .collection("rooms")
-      .getOne<{ ruleset: unknown }>(game.room_id);
+      .getOne<{ ruleset: unknown }>(hand.room_id);
     const ruleset = resolveRuleset(room.ruleset);
 
     const bids = await pb.collection("bids").getFullList<BidRecord>({
@@ -93,7 +92,7 @@ export async function POST(
     }
 
     // Turn order starts at the opener and rotates per bid.
-    const players = gamePlayers(game);
+    const players = gamePlayers(hand);
     const expectedSeat = rotateFrom(opener, bids.length);
     const expectedUsername = usernameForSeat(players, expectedSeat);
     if (body.username !== expectedUsername) {
@@ -154,10 +153,12 @@ export async function POST(
       const contract = finalContract(nextEntries);
       if (!contract) {
         // Passed out: no contract, no score. Close the hand and reset ready.
+        const endedAt = new Date().toISOString();
         await pb.collection("hands").update(handId, {
-          ended_at: new Date().toISOString(),
+          ended_at: endedAt,
+          end_reason: "completed",
         });
-        await unreadyRoomPlayers(pb, game.room_id);
+        await unreadyRoomPlayers(pb, hand.room_id);
         out = { ok: true, passedOut: true };
       } else {
         // Create the contract once (guard against concurrent duplicate).

@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   ContractRecord,
-  Game,
   Hand,
   HandResultRecord,
   Room,
@@ -48,9 +47,13 @@ const hoisted = vi.hoisted(() => {
       const key = sort.replace(/^-/, "");
       const desc = sort.startsWith("-");
       out.sort((a, b) => {
-        const av = a[key] as number;
-        const bv = b[key] as number;
-        return desc ? bv - av : av - bv;
+        const av = a[key];
+        const bv = b[key];
+        const cmp =
+          typeof av === "number" && typeof bv === "number"
+            ? av - bv
+            : String(av).localeCompare(String(bv));
+        return desc ? -cmp : cmp;
       });
     }
     return out as T[];
@@ -180,26 +183,17 @@ async function setupHand() {
       }),
     );
   }
-  const game = await hoisted.db.collection("games").create<Game>({
+  const hand = await hoisted.db.collection("hands").create<Hand>({
     room_id: room.id,
-    game_number: 1,
     north_username: "UN",
     south_username: "US",
     east_username: "UE",
     west_username: "UW",
+    deal: makeDeal(),
     started_at: "",
     ended_at: "",
     winner_side: "",
     end_reason: "",
-  });
-  const hand = await hoisted.db.collection("hands").create<Hand>({
-    game_id: game.id,
-    hand_number: 1,
-    dealer: "N",
-    vulnerability: "none",
-    deal: makeDeal(),
-    started_at: "",
-    ended_at: "",
   });
   await hoisted.db.collection("contracts").create<ContractRecord>({
     hand_id: hand.id,
@@ -210,7 +204,7 @@ async function setupHand() {
     doubled: false,
     redoubled: false,
   });
-  return { room, game, hand, seatRecs };
+  return { room, hand, seatRecs };
 }
 
 async function postPlay(
@@ -245,7 +239,7 @@ describe("hand end when the contract is made exactly", () => {
   });
 
   it("ends the hand when the declarer reaches the required tricks (delta 0)", async () => {
-    const { room, game, hand, seatRecs } = await setupHand();
+    const { room, hand, seatRecs } = await setupHand();
     const handId = hand.id;
 
     const remaining: Record<string, string[]> = {};
@@ -303,6 +297,8 @@ describe("hand end when the contract is made exactly", () => {
         filter: `hand_id = "${handId}"`,
       });
     expect(fresh.ended_at, "hand should have ended").toBeTruthy();
+    expect(fresh.end_reason, "end reason").toBe("completed");
+    expect(fresh.winner_side, "winner is declarer side").toBe("NS");
     expect(results.length, "exactly one scored result").toBe(1);
     expect(results[0]!.result_delta, "made the contract exactly").toBe(0);
   }, 30000);

@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { resolveRuleset } from "@/lib/rulesets";
-import type { Game, Hand } from "@/lib/types";
+import type { Hand } from "@/lib/types";
 import { errorResponse } from "@/server/errors";
 import { runBotTurns } from "@/server/bots";
 import {
-  createGameWithHand,
+  createHand,
   getSeatedPlayers,
   requireSeatedPlayer,
 } from "@/server/helpers";
@@ -50,20 +49,9 @@ export async function POST(
     }
 
     // The current hand must be over before starting the next game.
-    const games = await pb.collection("games").getList<Game>(1, 1, {
-      filter: pb.filter("room_id = {:roomId}", { roomId: room.id }),
-      sort: "-game_number",
-    });
-    const game = games.items[0];
-    if (!game) {
-      return NextResponse.json(
-        { error: "No game in progress" },
-        { status: 404 },
-      );
-    }
     const hands = await pb.collection("hands").getList<Hand>(1, 1, {
-      filter: pb.filter("game_id = {:gameId}", { gameId: game.id }),
-      sort: "-hand_number",
+      filter: pb.filter("room_id = {:roomId}", { roomId: room.id }),
+      sort: "-created",
     });
     const hand = hands.items[0];
     if (!hand || !hand.ended_at) {
@@ -81,17 +69,12 @@ export async function POST(
       );
     }
 
-    const ruleset = resolveRuleset(room.ruleset);
-    const created = await createGameWithHand(pb, room, players, ruleset);
+    const created = await createHand(pb, room, players);
 
     // The opener may be a bot (solo quick games); let it act immediately.
-    await runBotTurns(pb, created.hand.id);
+    await runBotTurns(pb, created.id);
 
-    return NextResponse.json({
-      ok: true,
-      gameId: created.game.id,
-      handId: created.hand.id,
-    });
+    return NextResponse.json({ ok: true, handId: created.id });
   } catch (err) {
     return errorResponse(err);
   }

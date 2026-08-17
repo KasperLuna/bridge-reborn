@@ -6,21 +6,21 @@ import { buildShuffledDeal } from "@/lib/game/cards";
 import { resolveOpener } from "@/lib/game/bidding";
 import { playersFromUsernames } from "@/lib/game/seats";
 import type { Ruleset } from "@/lib/rulesets";
-import type { Game, Hand, Room, RoomSeat } from "@/lib/types";
+import type { Hand, Room, RoomSeat } from "@/lib/types";
 
 import { ApiError } from "./errors";
 
-export function gamePlayers(game: Game): GamePlayers {
-  return playersFromUsernames(game);
+export function gamePlayers(hand: Hand): GamePlayers {
+  return playersFromUsernames(hand);
 }
 
 export function seatOf(seat: RoomSeat): Seat {
   return seat.seat as Seat;
 }
 
-/** Who opens the auction, per ruleset. */
+/** Who opens the auction, per ruleset. Dealer is always N (one hand per game). */
 export function openerSeat(ruleset: Ruleset, hand: Hand): Seat | null {
-  return resolveOpener(ruleset.openerRule, hand.deal, hand.dealer);
+  return resolveOpener(ruleset.openerRule, hand.deal, "N");
 }
 
 export async function getRoom(pb: PocketBase, roomId: string): Promise<Room> {
@@ -137,15 +137,9 @@ export async function getActiveHand(
   roomId: string,
 ): Promise<Hand | null> {
   try {
-    const games = await pb.collection("games").getList<Game>(1, 1, {
-      filter: pb.filter("room_id = {:roomId}", { roomId }),
-      sort: "-game_number",
-    });
-    const game = games.items[0];
-    if (!game || game.ended_at) return null;
     const hands = await pb.collection("hands").getList<Hand>(1, 1, {
-      filter: pb.filter("game_id = {:gameId}", { gameId: game.id }),
-      sort: "-hand_number",
+      filter: pb.filter("room_id = {:roomId}", { roomId }),
+      sort: "-created",
     });
     const hand = hands.items[0];
     return hand && !hand.ended_at ? hand : null;
@@ -154,47 +148,29 @@ export async function getActiveHand(
   }
 }
 
-/** Creates game #n+1 and its first hand. Shared by start and rematch. */
-export async function createGameWithHand(
+/** Creates a new hand (one per game). Shared by start and rematch. */
+export async function createHand(
   pb: PocketBase,
   room: Room,
   players: RoomSeat[],
-  ruleset: Ruleset,
-): Promise<{ game: Game; hand: Hand }> {
+): Promise<Hand> {
   const bySeat = new Map<Seat, RoomSeat>();
   for (const p of players) if (p.seat) bySeat.set(p.seat, p);
 
-  let gameNumber = 1;
-  const existing = await pb.collection("games").getList<Game>(1, 1, {
-    filter: pb.filter("room_id = {:roomId}", { roomId: room.id }),
-    sort: "-game_number",
-  });
-  if (existing.items[0]) gameNumber = existing.items[0].game_number + 1;
-
   const startedAt = new Date().toISOString();
-  const game = await pb.collection("games").create<Game>({
+  const hand = await pb.collection("hands").create<Hand>({
     room_id: room.id,
-    game_number: gameNumber,
     north_username: bySeat.get("N")!.username,
     south_username: bySeat.get("S")!.username,
     east_username: bySeat.get("E")!.username,
     west_username: bySeat.get("W")!.username,
+    deal: buildShuffledDeal(),
     started_at: startedAt,
   });
 
-  const deal = buildShuffledDeal();
-  const hand = await pb.collection("hands").create<Hand>({
-    game_id: game.id,
-    hand_number: 1,
-    dealer: "N",
-    vulnerability: ruleset.vulnerabilityCycle[0] ?? "none",
-    deal,
-    started_at: startedAt,
-  });
+  void solveDoubleDummy(pb, hand, hand.deal);
 
-  void solveDoubleDummy(pb, hand, deal);
-
-  return { game, hand };
+  return hand;
 }
 
 /** Best-effort double-dummy fill; never blocks or fails game creation. */

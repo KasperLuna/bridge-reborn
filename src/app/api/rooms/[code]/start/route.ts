@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { resolveRuleset } from "@/lib/rulesets";
 import { errorResponse } from "@/server/errors";
 import {
-  createGameWithHand,
+  createHand,
   getSeatedPlayers,
   requireSeatedPlayer,
 } from "@/server/helpers";
@@ -59,15 +58,14 @@ export async function POST(
       );
     }
 
-    const ruleset = resolveRuleset(room.ruleset);
-    const { game, hand } = await createGameWithHand(pb, room, players, ruleset);
+    const hand = await createHand(pb, room, players);
 
     await pb.collection("rooms").update(room.id, {
       status: "active",
       started_at: new Date().toISOString(),
     });
 
-    return NextResponse.json({ ok: true, gameId: game.id, handId: hand.id });
+    return NextResponse.json({ ok: true, handId: hand.id });
   } catch (err) {
     return errorResponse(err);
   }

@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import type { Seat } from "@/lib/game/types";
-import { DEFAULT_RULESET_ID, getPreset, resolveRuleset } from "@/lib/rulesets";
+import { DEFAULT_RULESET_ID, getPreset } from "@/lib/rulesets";
 import type { Room, RoomSeat } from "@/lib/types";
 import { runBotTurns } from "@/server/bots";
 import { errorResponse } from "@/server/errors";
-import { createGameWithHand, getRoomByCode } from "@/server/helpers";
+import { createHand, getRoomByCode } from "@/server/helpers";
 import { getAdminClient } from "@/server/pb";
 import { verifyPassword } from "@/server/room-password";
 
@@ -138,9 +138,8 @@ export async function POST(req: Request) {
         filter: pb.filter("room_id = {:roomId}", { roomId: room.id }),
       });
       if (after.filter((s) => !s.is_spectator && s.seat).length === 4) {
-        const ruleset = resolveRuleset(room.ruleset);
         const players = after.filter((s) => !s.is_spectator && s.seat);
-        const { hand } = await createGameWithHand(pb, room, players, ruleset);
+        const hand = await createHand(pb, room, players);
         await pb.collection("rooms").update(room.id, {
           status: "active",
           started_at: new Date().toISOString(),

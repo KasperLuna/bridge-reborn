@@ -1,10 +1,4 @@
-import type {
-  Deal,
-  Partnership,
-  Seat,
-  Strain,
-  Vulnerability,
-} from "@/lib/game/types";
+import type { Deal, Partnership, Seat, Strain } from "@/lib/game/types";
 
 export type RoomStatus = "waiting" | "active" | "finished";
 
@@ -56,32 +50,19 @@ export type KickVote = {
   updated: string;
 };
 
-export type Game = {
+export type Hand = {
   id: string;
   room_id: string;
-  game_number: number;
   north_username: string;
   south_username: string;
   east_username: string;
   west_username: string;
-  started_at: string;
-  ended_at: string;
-  winner_side: Partnership | "";
-  end_reason: string;
-  created: string;
-  updated: string;
-};
-
-export type Hand = {
-  id: string;
-  game_id: string;
-  hand_number: number;
-  dealer: Seat;
-  vulnerability: Vulnerability;
   deal: Deal;
   dd_result: unknown;
   started_at: string;
   ended_at: string;
+  winner_side: Partnership | "";
+  end_reason: string;
   created: string;
   updated: string;
 };

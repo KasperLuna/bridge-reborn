@@ -17,7 +17,11 @@ import { PlayingCard } from "@/components/PlayingCard";
 import { ReplayView } from "@/components/ReplayView";
 import { Scoreboard } from "@/components/Scoreboard";
 import { SeatBadge } from "@/components/SeatBadge";
-import { TrickArea, type TableDir, useTrickCardSize } from "@/components/TrickArea";
+import {
+  TrickArea,
+  type TableDir,
+  useTrickCardSize,
+} from "@/components/TrickArea";
 import { Button } from "@/components/ui/Button";
 import { useGameSync } from "@/hooks/useGameSync";
 import { useRoomSync } from "@/hooks/useRoomSync";
@@ -67,7 +71,6 @@ export default function GamePage() {
   const claim = useRoomStore((s) => s.claim);
   const leave = useRoomStore((s) => s.leave);
 
-  const game = useGameStore((s) => s.game);
   const hand = useGameStore((s) => s.hand);
   const bids = useGameStore((s) => s.bids);
   const contract = useGameStore((s) => s.contract);
@@ -141,15 +144,15 @@ export default function GamePage() {
   );
 
   useEffect(() => {
-    if (!game || !lastWon) {
+    if (!hand || !lastWon) {
       // Nothing to animate (e.g. a new game just started and tricks cleared).
       setWonAnim(null);
       return;
     }
     const ws =
       (lastWon.winner_seat as Seat | undefined) ??
-      seatOfUsername(players(game), lastWon.winner_username);
-    const name = ws ? players(game)[ws] : null;
+      seatOfUsername(players(hand), lastWon.winner_username);
+    const name = ws ? players(hand)[ws] : null;
     if (!ws || !name) return;
     setWonAnim({
       trickId: lastWon.id,
@@ -164,7 +167,7 @@ export default function GamePage() {
       );
     }, 7000);
     return () => clearTimeout(t);
-  }, [game, lastWon]);
+  }, [hand, lastWon]);
 
   // Point the trick cards at the winner's seat badge so they fly underneath it.
   useEffect(() => {
@@ -220,7 +223,7 @@ export default function GamePage() {
   // run unconditionally. Only alerts seated, non-spectating players.
   const handOver = !!hand?.ended_at;
   const phase = contract ? "play" : "auction";
-  const playerMap = game ? players(game) : null;
+  const playerMap = hand ? players(hand) : null;
   const declarerSeat: Seat | null = contract
     ? ((contract.declarer_seat as Seat | undefined) ??
       (playerMap
@@ -248,7 +251,7 @@ export default function GamePage() {
   const trickCardSize = useTrickCardSize();
 
   if (!session) return null;
-  if (!game || !hand || !ruleset) {
+  if (!hand || !ruleset) {
     return (
       <main className="grid min-h-dvh place-items-center text-cream-dim">
         Loading table…
@@ -256,16 +259,16 @@ export default function GamePage() {
     );
   }
 
-  const p = players(game);
+  const p = players(hand);
   const myUsername = session.username;
 
-  const auction = auctionEntries(bids, game);
+  const auction = auctionEntries(bids, hand);
   const trumpSuit =
     contract && contract.strain !== "NT" ? contract.strain : null;
 
   // Per-seat view for every seat this human controls.
   const mySeatData = mySeats.map((seat) => {
-    const bidInfo = legalBidsForMe(bids, game, hand, ruleset, seat);
+    const bidInfo = legalBidsForMe(bids, hand, ruleset, seat);
     const sorted =
       handSort === "suit"
         ? sortHand(hand.deal[seat] ?? [])
@@ -560,7 +563,7 @@ export default function GamePage() {
         <div className="mx-auto">
           <Scoreboard
             contract={contractShorthand(contract)}
-            vulnerability={hand.vulnerability}
+            vulnerability={"none"}
             nsTricks={nsTricks}
             ewTricks={ewTricks}
             nsNeeded={nsNeeded}
@@ -626,12 +629,12 @@ export default function GamePage() {
       </header>
 
       <div className="flex min-h-0 w-full flex-1 flex-col lg:flex-row">
-        <div className="relative flex min-h-0 w-full flex-1 items-center justify-center px-3 [container-type:size] sm:px-4">
+        <div className="[container-type:size] relative flex min-h-0 w-full flex-1 items-center justify-center px-3 sm:px-4">
           <div
             className={`felt relative aspect-square rounded-4xl ${
               phase === "auction" && auctionPanel
                 ? "h-full w-full"
-                : "w-full max-h-full"
+                : "max-h-full w-full"
             } sm:h-auto sm:w-[min(100cqw,100cqh)]`}
           >
             {SEATS.map((seat) => {
@@ -862,16 +865,16 @@ export default function GamePage() {
           nsTricks={nsTricks}
           ewTricks={ewTricks}
           hands={inspectHands}
-          winnerSide={game.winner_side || null}
+          winnerSide={hand.winner_side || null}
           winnerNames={
-            game.winner_side === "NS"
+            hand.winner_side === "NS"
               ? [p.N, p.S]
-              : game.winner_side === "EW"
+              : hand.winner_side === "EW"
                 ? [p.E, p.W]
                 : null
           }
           handWinnerNames={handWinnerNames}
-          endReason={game.end_reason || null}
+          endReason={hand.end_reason || null}
           mode={room?.mode ?? "four"}
           isNorth={mySeats.includes("N")}
           isSeated={!session.isSpectator}
@@ -1041,7 +1044,9 @@ function HandOverOverlay({
                   {winnerSide} win
                   {endReason === "conceded"
                     ? " · by concession"
-                    : " · opponent left"}
+                    : endReason === "left"
+                      ? " · opponent left"
+                      : ""}
                 </p>
               </>
             ) : (
@@ -1079,7 +1084,7 @@ function HandOverOverlay({
             )}
 
             {isSeated &&
-              !winnerSide &&
+              endReason === "completed" &&
               (mode === "four" ? (
                 <div className="mt-6 flex flex-col gap-2">
                   <Button

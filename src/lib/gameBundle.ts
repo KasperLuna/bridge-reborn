@@ -2,7 +2,6 @@ import { pb } from "@/lib/pb";
 import type {
   BidRecord,
   ContractRecord,
-  Game,
   Hand,
   HandResultRecord,
   PlayRecord,
@@ -19,56 +18,58 @@ export type HandBundle = {
 };
 
 export type GameBundle = {
-  game: Game | null;
-  hands: HandBundle[];
+  hand: Hand | null;
+  bids: BidRecord[];
+  tricks: TrickRecord[];
+  plays: PlayRecord[];
+  contract: ContractRecord | null;
+  result: HandResultRecord | null;
 };
 
-/** Latest game in a room, with every hand and its auction/play records. */
+/** Latest hand in a room, with its auction/play records. */
 export async function fetchGameBundle(roomId: string): Promise<GameBundle> {
-  const games = await pb.collection("games").getList<Game>(1, 1, {
+  const hands = await pb.collection("hands").getList<Hand>(1, 1, {
     filter: pb.filter("room_id = {:roomId}", { roomId }),
-    sort: "-game_number",
+    sort: "-created",
   });
-  const game = games.items[0] ?? null;
-  if (!game) return { game: null, hands: [] };
+  const hand = hands.items[0] ?? null;
+  if (!hand)
+    return {
+      hand: null,
+      bids: [],
+      tricks: [],
+      plays: [],
+      contract: null,
+      result: null,
+    };
 
-  const hands = await pb.collection("hands").getFullList<Hand>({
-    filter: pb.filter("game_id = {:gameId}", { gameId: game.id }),
-    sort: "hand_number",
-  });
-
-  const bundles = await Promise.all(
-    hands.map(async (hand) => {
-      const handId = hand.id;
-      const [bids, contract, tricks, plays, result] = await Promise.all([
-        pb.collection("bids").getFullList<BidRecord>({
-          filter: pb.filter("hand_id = {:handId}", { handId }),
-          sort: "sequence_position",
-        }),
-        pb
-          .collection("contracts")
-          .getFirstListItem<ContractRecord>(
-            pb.filter("hand_id = {:handId}", { handId }),
-          )
-          .catch(() => null),
-        pb.collection("tricks").getFullList<TrickRecord>({
-          filter: pb.filter("hand_id = {:handId}", { handId }),
-          sort: "trick_number",
-        }),
-        pb.collection("plays").getFullList<PlayRecord>({
-          filter: pb.filter("hand_id = {:handId}", { handId }),
-          sort: "play_sequence",
-        }),
-        pb
-          .collection("hand_results")
-          .getFirstListItem<HandResultRecord>(
-            pb.filter("hand_id = {:handId}", { handId }),
-          )
-          .catch(() => null),
-      ]);
-      return { hand, bids, tricks, plays, contract, result };
+  const handId = hand.id;
+  const [bids, contract, tricks, plays, result] = await Promise.all([
+    pb.collection("bids").getFullList<BidRecord>({
+      filter: pb.filter("hand_id = {:handId}", { handId }),
+      sort: "sequence_position",
     }),
-  );
+    pb
+      .collection("contracts")
+      .getFirstListItem<ContractRecord>(
+        pb.filter("hand_id = {:handId}", { handId }),
+      )
+      .catch(() => null),
+    pb.collection("tricks").getFullList<TrickRecord>({
+      filter: pb.filter("hand_id = {:handId}", { handId }),
+      sort: "trick_number",
+    }),
+    pb.collection("plays").getFullList<PlayRecord>({
+      filter: pb.filter("hand_id = {:handId}", { handId }),
+      sort: "play_sequence",
+    }),
+    pb
+      .collection("hand_results")
+      .getFirstListItem<HandResultRecord>(
+        pb.filter("hand_id = {:handId}", { handId }),
+      )
+      .catch(() => null),
+  ]);
 
-  return { game, hands: bundles };
+  return { hand, bids, tricks, plays, contract, result };
 }

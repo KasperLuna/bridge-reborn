@@ -7,7 +7,6 @@ import { resolveRuleset } from "@/lib/rulesets";
 import type {
   BidRecord,
   ContractRecord,
-  Game,
   Hand,
   PlayRecord,
   Room,
@@ -58,10 +57,9 @@ async function runOneBotTurn(pb: PocketBase, handId: string): Promise<boolean> {
   const hand = await pb.collection("hands").getOne<Hand>(handId);
   if (hand.ended_at) return false;
 
-  const game = await pb.collection("games").getOne<Game>(hand.game_id);
-  const room = await pb.collection("rooms").getOne<Room>(game.room_id);
+  const room = await pb.collection("rooms").getOne<Room>(hand.room_id);
   const ruleset = resolveRuleset(room.ruleset);
-  const players = gamePlayers(game);
+  const players = gamePlayers(hand);
 
   const [bids, contract, tricks, plays, seats] = await Promise.all([
     pb.collection("bids").getFullList<BidRecord>({
@@ -83,7 +81,7 @@ async function runOneBotTurn(pb: PocketBase, handId: string): Promise<boolean> {
       sort: "play_sequence",
     }),
     pb.collection("room_seats").getFullList<RoomSeat>({
-      filter: pb.filter("room_id = {:roomId}", { roomId: game.room_id }),
+      filter: pb.filter("room_id = {:roomId}", { roomId: hand.room_id }),
     }),
   ]);
 
@@ -98,7 +96,7 @@ async function runOneBotTurn(pb: PocketBase, handId: string): Promise<boolean> {
     const rec = seatRec(players[actorSeat], actorSeat);
     if (!rec || !rec.is_bot) return false;
 
-    const legal = legalBidsForMe(bids, game, hand, ruleset, actorSeat);
+    const legal = legalBidsForMe(bids, hand, ruleset, actorSeat);
     const call = chooseBid({
       hand: hand.deal[actorSeat] ?? [],
       entries: bids.map((b) => ({

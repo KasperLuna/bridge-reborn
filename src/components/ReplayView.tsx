@@ -4,13 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PlayingCard } from "@/components/PlayingCard";
 import { SeatBadge } from "@/components/SeatBadge";
-import { TrickArea, type TableDir, useTrickCardSize } from "@/components/TrickArea";
-import { Button } from "@/components/ui/Button";
 import {
-  fetchGameBundle,
-  type GameBundle,
-  type HandBundle,
-} from "@/lib/gameBundle";
+  TrickArea,
+  type TableDir,
+  useTrickCardSize,
+} from "@/components/TrickArea";
+import { Button } from "@/components/ui/Button";
+import { fetchGameBundle, type GameBundle } from "@/lib/gameBundle";
 import { partnershipOf, seatOfUsername } from "@/lib/game/seats";
 import type { Seat } from "@/lib/game/types";
 import {
@@ -37,7 +37,6 @@ type HandTimeline = {
   start: number;
   count: number;
   events: ReplayEvent[];
-  handBundle: HandBundle;
 };
 
 /**
@@ -77,28 +76,24 @@ export function ReplayView({
   }, [open, roomId]);
 
   const timeline = useMemo(() => {
-    if (!bundle?.game) return [];
-    const p = players(bundle.game);
-    let start = 0;
-    return bundle.hands.map((hb) => {
-      const events = buildHandEvents(
-        hb.bids,
-        hb.plays,
-        hb.tricks,
-        hb.hand.hand_number,
-        (u) => seatOfUsername(p, u),
-      );
-      const count = countEvents(hb.bids, hb.plays);
-      const tl = {
-        handNumber: hb.hand.hand_number,
-        start,
+    if (!bundle?.hand) return [];
+    const p = players(bundle.hand);
+    const events = buildHandEvents(
+      bundle.bids,
+      bundle.plays,
+      bundle.tricks,
+      1,
+      (u) => seatOfUsername(p, u),
+    );
+    const count = countEvents(bundle.bids, bundle.plays);
+    return [
+      {
+        handNumber: 1,
+        start: 0,
         count,
         events,
-        handBundle: hb,
-      };
-      start += count;
-      return tl;
-    });
+      },
+    ];
   }, [bundle]);
 
   const total = useMemo(
@@ -145,22 +140,22 @@ export function ReplayView({
   }, [index, timeline]);
 
   const state = useMemo(() => {
-    if (!current || !bundle?.game) return null;
-    const hb = current.tl.handBundle;
-    const game = bundle.game;
-    const ordered = orderedPlays(hb.plays, hb.tricks);
-    const { bids, plays } = sliceTo(hb.bids, ordered, current.local);
-    const auction = auctionEntries(bids, game);
-    const auctionDone = hb.bids.length > 0 && bids.length >= hb.bids.length;
-    const contract = auctionDone ? hb.contract : null;
+    if (!current || !bundle?.hand) return null;
+    const hand = bundle.hand;
+    const ordered = orderedPlays(bundle.plays, bundle.tricks);
+    const { bids, plays } = sliceTo(bundle.bids, ordered, current.local);
+    const auction = auctionEntries(bids, hand);
+    const auctionDone =
+      bundle.bids.length > 0 && bids.length >= bundle.bids.length;
+    const contract = auctionDone ? bundle.contract : null;
     const phase = contract ? "play" : "auction";
     // Completed tricks (for trick tallies) plus the trick the last play is in,
     // which is always the open one regardless of the winner flag (replay shows
     // finished tricks from records that already carry winners).
-    const complete = visibleTricks(hb.tricks, plays);
+    const complete = visibleTricks(bundle.tricks, plays);
     const openId = plays.at(-1)?.trick_id;
     const openTrick = openId
-      ? (hb.tricks.find((t) => t.id === openId) ?? null)
+      ? (bundle.tricks.find((t) => t.id === openId) ?? null)
       : null;
     const trickCards = openTrick
       ? trickPlaysFor(openTrick.id, plays).map((pl) => ({
@@ -181,7 +176,7 @@ export function ReplayView({
       (t) => partnershipOf(t.winner_seat) === "NS",
     ).length;
     return {
-      usernames: players(game),
+      usernames: players(hand),
       auction,
       phase,
       contractShorthand: contractShorthand(contract),
@@ -189,12 +184,12 @@ export function ReplayView({
       trumpSuit,
       fanCards: SEATS.map((seat) => ({
         seat,
-        cards: myCards(hb.hand, seat).filter((c) => !playedBySeat[seat].has(c)),
+        cards: myCards(hand, seat).filter((c) => !playedBySeat[seat].has(c)),
       })),
       nsTricks,
       ewTricks: complete.length - nsTricks,
       over: current.local >= current.tl.count,
-      result: hb.result,
+      result: bundle.result,
     };
   }, [current, bundle]);
 
@@ -243,8 +238,8 @@ export function ReplayView({
         </div>
       ) : (
         <>
-          <div className="relative mx-auto flex min-h-0 w-full max-w-2xl flex-1 items-center justify-center px-3 [container-type:size] sm:px-4">
-            <div className="felt relative aspect-square w-full max-h-full rounded-4xl sm:h-auto sm:w-[min(100cqw,100cqh)]">
+          <div className="[container-type:size] relative mx-auto flex min-h-0 w-full max-w-2xl flex-1 items-center justify-center px-3 sm:px-4">
+            <div className="felt relative aspect-square max-h-full w-full rounded-4xl sm:h-auto sm:w-[min(100cqw,100cqh)]">
               {SEATS.map((seat) => (
                 <div
                   key={seat}
@@ -392,9 +387,7 @@ function AuctionStrip({
     );
   }
   return (
-    <div
-      className="max-h-full w-full overflow-y-auto rounded-2xl border border-cream/10 bg-felt-deep/70 p-4 backdrop-blur max-w-md"
-    >
+    <div className="max-h-full w-full max-w-md overflow-y-auto rounded-2xl border border-cream/10 bg-felt-deep/70 p-4 backdrop-blur">
       <div className="flex flex-wrap items-center justify-center gap-1.5">
         {entries.map((e, i) => (
           <span

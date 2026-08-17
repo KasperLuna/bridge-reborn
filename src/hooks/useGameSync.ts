@@ -7,7 +7,6 @@ import { onRealtimeReconnect, subscribe } from "@/lib/realtime";
 import type {
   BidRecord,
   ContractRecord,
-  Game,
   Hand,
   HandResultRecord,
   PlayRecord,
@@ -55,21 +54,11 @@ export function useGameSync(session: Session | null) {
         if (disposed) return;
         roomStore.setRoom(room);
 
-        const games = await pb.collection("games").getList<Game>(1, 1, {
+        const hands = await pb.collection("hands").getList<Hand>(1, 1, {
           filter: pb.filter("room_id = {:roomId}", { roomId }),
-          sort: "-game_number",
+          sort: "-created",
         });
-        const game = games.items[0] ?? null;
-        gameStore.setGame(game);
-
-        let hand: Hand | null = null;
-        if (game) {
-          const hands = await pb.collection("hands").getList<Hand>(1, 1, {
-            filter: pb.filter("game_id = {:gameId}", { gameId: game.id }),
-            sort: "-hand_number",
-          });
-          hand = hands.items[0] ?? null;
-        }
+        const hand = hands.items[0] ?? null;
         gameStore.setHand(hand);
 
         let bids: BidRecord[] = [];
@@ -122,25 +111,19 @@ export function useGameSync(session: Session | null) {
             if (e.action === "delete") roomStore.setRoom(null);
             else roomStore.setRoom(e.record);
           }),
-          subscribe<Game>("games", `room_id = "${roomId}"`, (e) => {
-            const current = useGameStore.getState().game;
-            if (!current || e.record.id !== current.id) {
-              // A new game appeared (rematch); refetch everything.
-              setRefreshKey((k) => k + 1);
-              return;
-            }
-            gameStore.setGame(e.record);
-          }),
         ];
 
-        if (game && hand) {
+        if (hand) {
           const handId = hand.id;
           unsubs.push(
-            subscribe<Hand>("hands", `game_id = "${game.id}"`, (e) => {
+            subscribe<Hand>("hands", `room_id = "${roomId}"`, (e) => {
               const current = useGameStore.getState().hand;
-              if (current && e.record.id === current.id) {
-                gameStore.setHand(e.record);
+              if (!current || e.record.id !== current.id) {
+                // A new hand appeared (next game); refetch everything.
+                setRefreshKey((k) => k + 1);
+                return;
               }
+              gameStore.setHand(e.record);
             }),
             subscribe<BidRecord>("bids", `hand_id = "${handId}"`, (e) => {
               gameStore.setBids(

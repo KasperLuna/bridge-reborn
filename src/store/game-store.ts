@@ -6,7 +6,6 @@ import * as api from "@/lib/api";
 import type {
   BidRecord,
   ContractRecord,
-  Game,
   Hand,
   HandResultRecord,
   PlayRecord,
@@ -16,7 +15,6 @@ import type {
 import { useSessionStore } from "./session-store";
 
 type GameState = {
-  game: Game | null;
   hand: Hand | null;
   bids: BidRecord[];
   contract: ContractRecord | null;
@@ -25,7 +23,6 @@ type GameState = {
   result: HandResultRecord | null;
   error: string | null;
   pending: boolean;
-  setGame: (game: Game | null) => void;
   setHand: (hand: Hand | null) => void;
   setBids: (bids: BidRecord[]) => void;
   setContract: (contract: ContractRecord | null) => void;
@@ -48,7 +45,6 @@ function requireSession() {
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
-  game: null,
   hand: null,
   bids: [],
   contract: null,
@@ -58,7 +54,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   error: null,
   pending: false,
 
-  setGame: (game) => set({ game }),
   setHand: (hand) => set({ hand }),
   setBids: (bids) => set({ bids }),
   setContract: (contract) => set({ contract }),
@@ -69,7 +64,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   setPending: (pending) => set({ pending }),
   reset: () =>
     set({
-      game: null,
       hand: null,
       bids: [],
       contract: null,

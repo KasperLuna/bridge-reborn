@@ -4,6 +4,7 @@ import { z } from "zod";
 import { cardSuit } from "@/lib/game/cards";
 import {
   leftOf,
+  opponentsOf,
   partnershipOf,
   rotateFrom,
   seatOfUsername,
@@ -16,7 +17,6 @@ import type { Partnership } from "@/lib/game/types";
 import { resolveRuleset } from "@/lib/rulesets";
 import type {
   ContractRecord,
-  Game,
   Hand,
   HandResultRecord,
   PlayRecord,
@@ -74,13 +74,12 @@ export async function POST(
       );
     }
 
-    const game = await pb.collection("games").getOne<Game>(hand.game_id);
-    if (game.room_id !== body.roomId) {
+    if (hand.room_id !== body.roomId) {
       return NextResponse.json({ error: "Room mismatch" }, { status: 400 });
     }
     const room = await pb
       .collection("rooms")
-      .getOne<{ ruleset: unknown }>(game.room_id);
+      .getOne<{ ruleset: unknown }>(hand.room_id);
     const ruleset = resolveRuleset(room.ruleset);
 
     let contract: ContractRecord;
@@ -94,7 +93,7 @@ export async function POST(
       return NextResponse.json({ error: "No contract yet" }, { status: 409 });
     }
 
-    const players = gamePlayers(game);
+    const players = gamePlayers(hand);
     const declarerSeat =
       (contract.declarer_seat as Seat | undefined) ??
       seatOfUsername(players, contract.declarer_username);
@@ -286,11 +285,18 @@ export async function POST(
 
       const fresh = await pb.collection("hands").getOne<Hand>(handId);
       if (!fresh.ended_at) {
+        const endedAt = new Date().toISOString();
+        const winnerSide =
+          tricksMade >= tricksRequired
+            ? declarerSide
+            : opponentsOf(declarerSide);
         await pb.collection("hands").update(handId, {
-          ended_at: new Date().toISOString(),
+          ended_at: endedAt,
+          winner_side: winnerSide,
+          end_reason: "completed",
         });
         // Reset ready flags so players must re-ready before the next hand.
-        await unreadyRoomPlayers(pb, game.room_id);
+        await unreadyRoomPlayers(pb, hand.room_id);
       }
     }
   } catch (err) {

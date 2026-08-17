@@ -14,7 +14,6 @@ import type { Ruleset } from "@/lib/rulesets";
 import type {
   BidRecord,
   ContractRecord,
-  Game,
   Hand,
   PlayRecord,
   RoomSeat,
@@ -23,8 +22,8 @@ import type {
 
 export const players = playersFromUsernames;
 
-export function auctionEntries(bids: BidRecord[], game: Game): AuctionEntry[] {
-  const p = players(game);
+export function auctionEntries(bids: BidRecord[], hand: Hand): AuctionEntry[] {
+  const p = players(hand);
   return bids.map((b) => {
     const seat = seatOfUsername(p, b.username);
     return {
@@ -82,7 +81,7 @@ export function bidTurnSeat(
   hand: Hand,
   ruleset: Ruleset,
 ): Seat | null {
-  const opener = resolveOpener(ruleset.openerRule, hand.deal, hand.dealer);
+  const opener = resolveOpener(ruleset.openerRule, hand.deal, "N");
   if (!opener) return null;
   return rotateFrom(opener, bids.length);
 }
@@ -117,12 +116,11 @@ export function playTurnSeat(
 
 export function legalBidsForMe(
   bids: BidRecord[],
-  game: Game,
   hand: Hand,
   ruleset: Ruleset,
   seat: Seat,
 ) {
-  const entries = auctionEntries(bids, game);
+  const entries = auctionEntries(bids, hand);
   const myTurn = bidTurnSeat(bids, hand, ruleset) === seat;
   const actorSide = partnershipOf(seat);
   const legal = legalCalls(entries, actorSide, ruleset.bidding);

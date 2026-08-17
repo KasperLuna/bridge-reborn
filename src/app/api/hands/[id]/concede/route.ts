@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { opponentsOf, partnershipOf } from "@/lib/game/seats";
-import type { Game, Hand } from "@/lib/types";
+import type { Hand } from "@/lib/types";
 import { errorResponse } from "@/server/errors";
 import { requireSeatedPlayer, seatOf } from "@/server/helpers";
 import { getAdminClient } from "@/server/pb";
@@ -45,19 +45,17 @@ export async function POST(
       );
     }
 
-    const game = await pb.collection("games").getOne<Game>(hand.game_id);
-    if (game.room_id !== body.roomId) {
+    if (hand.room_id !== body.roomId) {
       return NextResponse.json({ error: "Room mismatch" }, { status: 400 });
     }
 
     const side = partnershipOf(seatOf(seat));
     const winnerSide = opponentsOf(side);
     const endedAt = new Date().toISOString();
-    // games.end_reason accepts "conceded" | "left" (see pb_schema.json).
+    // hands.end_reason accepts "conceded" | "left" | "completed" (see pb_schema.json).
     const endReason = body.action === "concede" ? "conceded" : "left";
 
-    await pb.collection("hands").update(hand.id, { ended_at: endedAt });
-    await pb.collection("games").update(game.id, {
+    await pb.collection("hands").update(hand.id, {
       ended_at: endedAt,
       winner_side: winnerSide,
       end_reason: endReason,

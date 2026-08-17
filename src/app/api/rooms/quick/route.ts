@@ -5,7 +5,7 @@ import { DEFAULT_RULESET_ID, getPreset } from "@/lib/rulesets";
 import type { Room, RoomSeat, Session } from "@/lib/types";
 import { runBotTurns } from "@/server/bots";
 import { errorResponse } from "@/server/errors";
-import { createGameWithHand } from "@/server/helpers";
+import { createHand } from "@/server/helpers";
 import { getAdminClient } from "@/server/pb";
 
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -107,8 +107,7 @@ export async function POST(req: Request) {
         filter: pb.filter("room_id = {:roomId}", { roomId: room.id }),
       });
       const players = seated.filter((s) => !s.is_spectator && s.seat);
-      const ruleset = getPreset(DEFAULT_RULESET_ID);
-      const { hand } = await createGameWithHand(pb, room, players, ruleset);
+      const hand = await createHand(pb, room, players);
       await runBotTurns(pb, hand.id);
     }
 
