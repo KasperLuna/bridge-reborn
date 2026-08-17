@@ -31,19 +31,28 @@ export function Hand({
   compact?: boolean;
 }) {
   const [narrow, setNarrow] = useState(false);
+  const [canHover, setCanHover] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
-    const update = () => setNarrow(mq.matches);
+    const mqNarrow = window.matchMedia("(max-width: 639px)");
+    const mqHover = window.matchMedia("(hover: hover)");
+    const update = () => {
+      setNarrow(mqNarrow.matches);
+      setCanHover(mqHover.matches);
+    };
     update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
+    mqNarrow.addEventListener("change", update);
+    mqHover.addEventListener("change", update);
+    return () => {
+      mqNarrow.removeEventListener("change", update);
+      mqHover.removeEventListener("change", update);
+    };
   }, []);
 
   const n = cards.length;
   const mid = (n - 1) / 2;
   const dense = n > 8;
   // Narrow screens: tuck the fan together so the spread stays on screen.
-  const k = narrow ? 0.72 : 1;
+  const k = narrow ? 0.95 : 1;
   const step = k * (dense ? 2.4 : 3.5);
   const offset = k * (dense ? 26 : 38);
   const depth = k * (dense ? 1.4 : 2.4);
@@ -73,7 +82,7 @@ export function Hand({
           <motion.div
             key={card}
             data-hand-card={card}
-            className="absolute origin-bottom"
+            className="absolute origin-bottom touch-manipulation"
             initial={{ y: 60, opacity: 0 }}
             animate={{
               x,
@@ -90,12 +99,16 @@ export function Hand({
               damping: 26,
               delay: i * 0.02,
             }}
+            // Hover-lift only where hover exists. On touch, a lingering hover
+            // would leave a raised card covering its neighbors and steal taps.
             whileHover={
-              clickable
+              clickable && canHover
                 ? { y: y - 26, scale: 1.12, rotate: 0, zIndex: 60 }
                 : undefined
             }
-            whileTap={clickable ? { scale: 0.92 } : undefined}
+            // On touch there's no hover, so lift the tapped card itself to reveal
+            // which one is pressed before release fires onClick.
+            whileTap={clickable ? { y: y - 14, scale: 1.06, zIndex: 60 } : undefined}
           >
             <div
               className={`rounded-xl transition-shadow ${
