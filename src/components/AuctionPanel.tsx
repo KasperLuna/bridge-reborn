@@ -85,14 +85,14 @@ export function AuctionPanel({
       : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime";
 
   return (
-    <div className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-cream/10 bg-felt-deep/70 p-3 backdrop-blur">
+    <div className="mx-auto flex h-full max-h-full min-h-0 w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-cream/10 bg-felt-deep/70 p-3 backdrop-blur">
       {/* History */}
-      <div className="flex min-h-8 flex-wrap items-center gap-1.5">
+      <div className="flex min-h-8 shrink-0 flex-wrap items-center gap-1.5">
         <AuctionChips entries={entries} />
       </div>
 
       {/* Actions */}
-      <div className="flex gap-2">
+      <div className="flex shrink-0 gap-2">
         <Button
           variant="ghost"
           className={`flex-1 ${selected("P")}`}
@@ -146,7 +146,7 @@ export function AuctionPanel({
       </div>
 
       {/* Confirm row: always reserved so staging never shifts the panel. */}
-      <div className="flex h-11 items-center justify-center gap-2">
+      <div className="flex h-11 shrink-0 items-center justify-center gap-2">
         {staged && (
           <>
             <span className="text-sm text-cream">{bidLabel(staged)}</span>

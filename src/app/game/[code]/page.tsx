@@ -448,15 +448,17 @@ export default function GamePage() {
           </span>
           <span className="hidden sm:inline">· {ruleset.name}</span>
         </div>
-        <Scoreboard
-          contract={contractShorthand(contract)}
-          vulnerability={hand.vulnerability}
-          nsTricks={nsTricks}
-          ewTricks={ewTricks}
-          nsNeeded={nsNeeded}
-          ewNeeded={ewNeeded}
-          onContractClick={() => setShowAuction(true)}
-        />
+        <div className="mx-auto">
+          <Scoreboard
+            contract={contractShorthand(contract)}
+            vulnerability={hand.vulnerability}
+            nsTricks={nsTricks}
+            ewTricks={ewTricks}
+            nsNeeded={nsNeeded}
+            ewNeeded={ewNeeded}
+            onContractClick={() => setShowAuction(true)}
+          />
+        </div>
         <div className="relative">
           <Button
             variant="ghost"
@@ -545,7 +547,7 @@ export default function GamePage() {
               strips), stretching to use the play-area whitespace. */}
           {phase === "auction" && auctionPanel && (
             <div className="absolute inset-0 z-10 flex items-center justify-center px-3 py-14 sm:hidden">
-              <div className="max-h-full w-full overflow-y-auto">
+              <div className="flex h-full min-h-0 w-full flex-col">
                 {auctionPanel}
               </div>
             </div>

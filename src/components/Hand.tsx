@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { motion } from "motion/react";
 
 import { cardSuit } from "@/lib/game/cards";
@@ -28,16 +30,27 @@ export function Hand({
       leave more vertical room for the centered bid panel). */
   compact?: boolean;
 }) {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const update = () => setNarrow(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
   const n = cards.length;
   const mid = (n - 1) / 2;
   const dense = n > 8;
-  const step = dense ? 2.4 : 3.5;
-  const offset = dense ? 26 : 38;
-  const depth = dense ? 1.4 : 2.4;
+  // Narrow screens: tuck the fan together so the spread stays on screen.
+  const k = narrow ? 0.72 : 1;
+  const step = k * (dense ? 2.4 : 3.5);
+  const offset = k * (dense ? 26 : 38);
+  const depth = k * (dense ? 1.4 : 2.4);
 
   return (
     <div
-      className={`relative flex h-36 items-end justify-center ${
+      className={`relative flex h-36 items-end justify-center pb-1 sm:pb-0 ${
         compact ? "" : "sm:h-52"
       }`}
     >
