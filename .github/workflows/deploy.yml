@@ -5,6 +5,11 @@ on:
 jobs:
   deploy:
     runs-on: self-hosted
+    env:
+      NEXT_PUBLIC_POCKETBASE_URL: ${{ secrets.NEXT_PUBLIC_POCKETBASE_URL }}
+      POCKETBASE_URL: ${{ secrets.POCKETBASE_URL }}
+      POCKETBASE_ADMIN_EMAIL: ${{ secrets.POCKETBASE_ADMIN_EMAIL }}
+      POCKETBASE_ADMIN_PASSWORD: ${{ secrets.POCKETBASE_ADMIN_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - run: docker compose up -d --build
