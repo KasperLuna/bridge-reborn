@@ -145,10 +145,6 @@ export type HandResultRecord = {
   tricks_made: number;
   tricks_required: number;
   result_delta: number;
-  ns_score: number;
-  ew_score: number;
-  ns_imp_delta: number;
-  ew_imp_delta: number;
   created: string;
   updated: string;
 };

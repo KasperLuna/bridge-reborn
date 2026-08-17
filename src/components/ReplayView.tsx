@@ -283,20 +283,16 @@ export function ReplayView({
                       <span className="text-cream-dim">
                         NS{" "}
                         <span className="font-display text-lg text-cream">
-                          {state.result?.ns_score ?? 0}
+                          {state.nsTricks}
                         </span>{" "}
-                        <span className="text-xs">
-                          · {state.nsTricks} tricks
-                        </span>
+                        <span className="text-xs">tricks</span>
                       </span>
                       <span className="text-cream-dim">
                         EW{" "}
                         <span className="font-display text-lg text-cream">
-                          {state.result?.ew_score ?? 0}
+                          {state.ewTricks}
                         </span>{" "}
-                        <span className="text-xs">
-                          · {state.ewTricks} tricks
-                        </span>
+                        <span className="text-xs">tricks</span>
                       </span>
                     </div>
                   </div>

@@ -549,58 +549,6 @@
         "required": false,
         "system": false,
         "type": "number"
-      },
-      {
-        "help": "",
-        "hidden": false,
-        "id": "num1000000012",
-        "max": null,
-        "min": null,
-        "name": "ns_score",
-        "onlyInt": true,
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "number"
-      },
-      {
-        "help": "",
-        "hidden": false,
-        "id": "num1000000013",
-        "max": null,
-        "min": null,
-        "name": "ew_score",
-        "onlyInt": true,
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "number"
-      },
-      {
-        "help": "",
-        "hidden": false,
-        "id": "num1000000014",
-        "max": null,
-        "min": null,
-        "name": "ns_imp_delta",
-        "onlyInt": false,
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "number"
-      },
-      {
-        "help": "",
-        "hidden": false,
-        "id": "num1000000015",
-        "max": null,
-        "min": null,
-        "name": "ew_imp_delta",
-        "onlyInt": false,
-        "presentable": false,
-        "required": false,
-        "system": false,
-        "type": "number"
       }
     ],
     "indexes": [],

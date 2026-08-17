@@ -13,7 +13,6 @@ import type { Seat } from "@/lib/game/types";
 import { isHandOver, trickWinner } from "@/lib/game/trick";
 import type { TrickPlay } from "@/lib/game/trick";
 import type { Partnership } from "@/lib/game/types";
-import { scoreContract } from "@/lib/game/scoring";
 import { resolveRuleset } from "@/lib/rulesets";
 import type {
   ContractRecord,
@@ -264,21 +263,6 @@ export async function POST(
           filter: pb.filter("hand_id = {:handId}", { handId }),
         });
       if (existing.items.length === 0) {
-        const { declaring, defending } = scoreContract(
-          {
-            level: Number(contract.level),
-            strain: contract.strain,
-            doubled: contract.doubled,
-            redoubled: contract.redoubled,
-          },
-          tricksMade,
-          declarerSide,
-          hand.vulnerability,
-          ruleset.scoring,
-        );
-        const nsScore = declarerSide === "NS" ? declaring : defending;
-        const ewScore = declarerSide === "EW" ? declaring : defending;
-
         try {
           await pb.collection("hand_results").create<HandResultRecord>({
             hand_id: handId,
@@ -286,10 +270,6 @@ export async function POST(
             tricks_made: tricksMade,
             tricks_required: tricksRequired,
             result_delta: tricksMade - tricksRequired,
-            ns_score: nsScore,
-            ew_score: ewScore,
-            ns_imp_delta: 0,
-            ew_imp_delta: 0,
           });
         } catch (err) {
           // Concurrent finish: unique hand_id clash means another request won.
