@@ -7,6 +7,11 @@ import { motion } from "motion/react";
 import { AuctionPanel } from "@/components/AuctionPanel";
 import { Hand } from "@/components/Hand";
 import { KickDialog } from "@/components/KickPanel";
+import {
+  markOnboardingSeen,
+  OnboardingModal,
+  onboardingSeen,
+} from "@/components/OnboardingModal";
 import { PlayingCard } from "@/components/PlayingCard";
 import { ReplayView } from "@/components/ReplayView";
 import { Scoreboard } from "@/components/Scoreboard";
@@ -15,6 +20,7 @@ import { TrickArea, type TableDir } from "@/components/TrickArea";
 import { Button } from "@/components/ui/Button";
 import { useGameSync } from "@/hooks/useGameSync";
 import { useRoomSync } from "@/hooks/useRoomSync";
+import { useTurnAlerts } from "@/hooks/useTurnAlerts";
 import { sortHand, sortHandByRank } from "@/lib/game/cards";
 import { opponentsOf, partnershipOf, seatOfUsername } from "@/lib/game/seats";
 import type { Card, GamePlayers, Seat } from "@/lib/game/types";
@@ -89,6 +95,7 @@ export default function GamePage() {
   const [confirmConcede, setConfirmConcede] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [kickOpen, setKickOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [wonAnim, setWonAnim] = useState<{
     trickId: string;
     winnerSeat: Seat;
@@ -117,6 +124,10 @@ export default function GamePage() {
     }
     if (room?.status === "waiting") router.replace(`/room/${session.code}`);
   }, [session, room?.status, router]);
+
+  useEffect(() => {
+    if (!onboardingSeen()) setShowOnboarding(true);
+  }, []);
 
   // When a trick is won, drive the winner animation: cards flip & fly under
   // the winner's name, then the middle clears after a 7s countdown.
@@ -204,6 +215,35 @@ export default function GamePage() {
   const primarySeat: Seat | null =
     (session?.seat as Seat) || mySeats[0] || null;
 
+  // Live turn state, computed before the loading guard so the alert hook can
+  // run unconditionally. Only alerts seated, non-spectating players.
+  const handOver = !!hand?.ended_at;
+  const phase = contract ? "play" : "auction";
+  const playerMap = game ? players(game) : null;
+  const declarerSeat: Seat | null = contract
+    ? ((contract.declarer_seat as Seat | undefined) ??
+      (playerMap
+        ? seatOfUsername(playerMap, contract.declarer_username)
+        : null))
+    : null;
+  const bidTurn = ruleset && hand ? bidTurnSeat(bids, hand, ruleset) : null;
+  const playTurn = playerMap
+    ? playTurnSeat(tricks, plays, playerMap, declarerSeat)
+    : null;
+  const activeSeat = !handOver
+    ? phase === "auction"
+      ? bidTurn
+      : playTurn
+    : null;
+
+  useTurnAlerts({
+    activeSeat,
+    phase,
+    mySeats,
+    handOver,
+    isSpectator: !!session?.isSpectator,
+  });
+
   if (!session) return null;
   if (!game || !hand || !ruleset) {
     return (
@@ -215,16 +255,8 @@ export default function GamePage() {
 
   const p = players(game);
   const myUsername = session.username;
-  const handOver = !!hand.ended_at;
-  const phase = contract ? "play" : "auction";
 
   const auction = auctionEntries(bids, game);
-  const bidTurn = bidTurnSeat(bids, hand, ruleset);
-  const declarerSeat = contract
-    ? ((contract.declarer_seat as Seat | undefined) ??
-      seatOfUsername(p, contract.declarer_username))
-    : null;
-  const playTurn = playTurnSeat(tricks, plays, p, declarerSeat);
   const trumpSuit =
     contract && contract.strain !== "NT" ? contract.strain : null;
 
@@ -351,8 +383,6 @@ export default function GamePage() {
     {} as Record<Seat, TableDir>,
   );
 
-  const activeSeat = !handOver && (phase === "auction" ? bidTurn : playTurn);
-
   function handleCardClick(card: Card, seat: Seat) {
     if (playAnim) return;
     if (staged && staged.card === card && staged.seat === seat) {
@@ -452,6 +482,16 @@ export default function GamePage() {
                   className="rounded-lg px-3 py-2 text-left text-sm text-danger transition-colors hover:bg-cream/5 disabled:opacity-40"
                 >
                   Concede
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowOnboarding(true);
+                  }}
+                  className="rounded-lg px-3 py-2 text-left text-sm text-cream transition-colors hover:bg-cream/5"
+                >
+                  How to play
                 </button>
                 {room?.mode === "four" && (
                   <button
@@ -734,6 +774,15 @@ export default function GamePage() {
 
       {kickOpen && room?.mode === "four" && (
         <KickDialog onClose={() => setKickOpen(false)} />
+      )}
+
+      {showOnboarding && (
+        <OnboardingModal
+          onDone={() => {
+            markOnboardingSeen();
+            setShowOnboarding(false);
+          }}
+        />
       )}
 
       {confirmConcede && (
