@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PlayingCard } from "@/components/PlayingCard";
 import { SeatBadge } from "@/components/SeatBadge";
-import { TrickArea, type TableDir } from "@/components/TrickArea";
+import { TrickArea, type TableDir, useTrickCardSize } from "@/components/TrickArea";
 import { Button } from "@/components/ui/Button";
 import {
   fetchGameBundle,
@@ -210,6 +210,11 @@ export function ReplayView({
     [],
   );
 
+  // Replay packs the trick tighter than the live table: cap at md so the cards
+  // bunch toward the center instead of running to the felt edge.
+  const viewportSize = useTrickCardSize();
+  const trickSize = viewportSize === "lg" ? "md" : viewportSize;
+
   if (!open) return null;
 
   return (
@@ -238,8 +243,8 @@ export function ReplayView({
         </div>
       ) : (
         <>
-          <div className="relative mx-auto flex min-h-0 w-full max-w-2xl flex-1 items-center justify-center px-3 sm:px-4">
-            <div className="felt relative aspect-square max-h-full w-full rounded-4xl sm:aspect-square sm:h-full sm:w-auto sm:max-w-full">
+          <div className="relative mx-auto flex min-h-0 w-full max-w-2xl flex-1 items-center justify-center px-3 [container-type:size] sm:px-4">
+            <div className="felt relative aspect-square w-full max-h-full rounded-4xl sm:h-auto sm:w-[min(100cqw,100cqh)]">
               {SEATS.map((seat) => (
                 <div
                   key={seat}
@@ -253,15 +258,13 @@ export function ReplayView({
                 {state.phase === "auction" ? (
                   <AuctionStrip entries={state.auction} />
                 ) : (
-                  <>
-                    <AuctionStrip entries={state.auction} compact />
-                    <TrickArea
-                      cards={state.trickCards}
-                      winner={null}
-                      positions={dirs}
-                      trumpSuit={state.trumpSuit}
-                    />
-                  </>
+                  <TrickArea
+                    cards={state.trickCards}
+                    winner={null}
+                    positions={dirs}
+                    trumpSuit={state.trumpSuit}
+                    size={trickSize}
+                  />
                 )}
               </div>
 
@@ -379,10 +382,8 @@ export function ReplayView({
 /** Compact history of the auction so far, styled like the live auction chips. */
 function AuctionStrip({
   entries,
-  compact = false,
 }: {
   entries: { call: string; username: string; side: "NS" | "EW" }[];
-  compact?: boolean;
 }) {
   if (entries.length === 0) {
     return (
@@ -394,15 +395,12 @@ function AuctionStrip({
       </div>
     );
   }
-  const shown = compact ? entries.slice(-10) : entries;
   return (
     <div
-      className={`max-h-full w-full overflow-y-auto rounded-2xl border border-cream/10 bg-felt-deep/70 p-4 backdrop-blur ${
-        compact ? "max-w-xs px-3 py-2" : "max-w-md"
-      }`}
+      className="max-h-full w-full overflow-y-auto rounded-2xl border border-cream/10 bg-felt-deep/70 p-4 backdrop-blur max-w-md"
     >
       <div className="flex flex-wrap items-center justify-center gap-1.5">
-        {shown.map((e, i) => (
+        {entries.map((e, i) => (
           <span
             key={i}
             className={`rounded-md px-2 py-0.5 text-sm font-semibold ${

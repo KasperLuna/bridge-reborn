@@ -110,6 +110,7 @@ export function TrickArea({
   winnerTarget = null,
   onCollected,
   trumpSuit = null,
+  size,
 }: {
   cards: { card: string; seat: Seat }[];
   winner: Seat | null;
@@ -119,6 +120,8 @@ export function TrickArea({
   winnerTarget?: { x: number; y: number } | null;
   onCollected?: () => void;
   trumpSuit?: Suit | null;
+  /** Override the viewport-derived size (replay wants a tighter layout). */
+  size?: TrickEff;
 }) {
   const bySeat = new Map(cards.map((c) => [c.seat, c.card]));
   const containerRef = useRef<HTMLDivElement>(null);
@@ -131,7 +134,8 @@ export function TrickArea({
   // Cards scale with the viewport like the hand fans: sm on phones, md on
   // small/tablet screens, lg on wide desktop. Slot geometry must match so the
   // collect/fly animation targets stay correct.
-  const eff = TRICK_EFFS[useTrickCardSize()];
+  const viewportSize = useTrickCardSize();
+  const eff = TRICK_EFFS[size ?? viewportSize];
 
   // After the countdown (collecting), fly every card (flipping over) under the
   // winner's name badge. Only recompute when the won-state or target changes.
