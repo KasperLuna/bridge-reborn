@@ -592,8 +592,11 @@ export default function GamePage() {
                   {auctionPanel}
                 </div>
               ) : (
-                <div className="rounded-2xl border border-cream/10 bg-felt-deep/70 p-5 text-center backdrop-blur">
-                  <p className="font-display text-lg text-cream">
+                <div className="w-full max-w-md rounded-2xl border border-cream/10 bg-felt-deep/70 p-5 text-center backdrop-blur">
+                  <div className="flex min-h-8 flex-wrap items-center justify-center gap-1.5">
+                    <AuctionChips entries={auction} />
+                  </div>
+                  <p className="mt-3 font-display text-lg text-cream">
                     {handOver
                       ? "Auction over"
                       : `Waiting on ${p[bidTurn ?? "N"]}`}

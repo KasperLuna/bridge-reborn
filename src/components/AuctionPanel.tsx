@@ -9,6 +9,42 @@ import { Button } from "./ui/Button";
 const LEVELS = [1, 2, 3, 4, 5, 6, 7] as const;
 const STRAINS: Strain[] = ["C", "D", "H", "S", "NT"];
 
+export type AuctionEntryView = {
+  call: string;
+  side: "NS" | "EW";
+  username: string;
+};
+
+/** Read-only chips of recent calls, shared by the live panel and the
+    not-my-turn waiting view. */
+export function AuctionChips({ entries }: { entries: AuctionEntryView[] }) {
+  const lastEntries = entries.slice(-6);
+  if (lastEntries.length === 0) {
+    return <span className="text-sm text-cream-dim/50">Auction opens here</span>;
+  }
+  return (
+    <>
+      {lastEntries.map((e, i) => (
+        <span
+          key={i}
+          className={`rounded-md px-2 py-0.5 text-sm font-semibold ${
+            e.call === "P"
+              ? "bg-cream/5 text-cream-dim"
+              : e.call === "X" || e.call === "XX"
+                ? "bg-danger/15 text-danger"
+                : "bg-lime/15 text-lime"
+          }`}
+        >
+          {e.call}
+          <span className="ml-1 max-w-16 truncate text-[10px] opacity-60">
+            {e.username}
+          </span>
+        </span>
+      ))}
+    </>
+  );
+}
+
 export function AuctionPanel({
   entries,
   legal,
@@ -17,7 +53,7 @@ export function AuctionPanel({
   staged = null,
   onCall,
 }: {
-  entries: { call: string; side: "NS" | "EW"; username: string }[];
+  entries: AuctionEntryView[];
   legal: LegalCalls;
   myTurn: boolean;
   disabled: boolean;
@@ -29,32 +65,12 @@ export function AuctionPanel({
       ? "border-lime/60 bg-lime/15 text-lime"
       : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime";
   const locked = disabled || !myTurn;
-  const lastEntries = entries.slice(-6);
 
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-cream/10 bg-felt-deep/70 p-3 backdrop-blur">
       {/* History */}
       <div className="flex min-h-8 flex-wrap items-center gap-1.5">
-        {lastEntries.length === 0 && (
-          <span className="text-sm text-cream-dim/50">Auction opens here</span>
-        )}
-        {lastEntries.map((e, i) => (
-          <span
-            key={i}
-            className={`rounded-md px-2 py-0.5 text-sm font-semibold ${
-              e.call === "P"
-                ? "bg-cream/5 text-cream-dim"
-                : e.call === "X" || e.call === "XX"
-                  ? "bg-danger/15 text-danger"
-                  : "bg-lime/15 text-lime"
-            }`}
-          >
-            {e.call}
-            <span className="ml-1 max-w-16 truncate text-[10px] opacity-60">
-              {e.username}
-            </span>
-          </span>
-        ))}
+        <AuctionChips entries={entries} />
       </div>
 
       {/* Actions */}
