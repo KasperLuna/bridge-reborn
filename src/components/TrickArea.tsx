@@ -19,24 +19,85 @@ const DIR_POS: Record<TableDir, string> = {
 
 const SEATS: Seat[] = ["N", "E", "S", "W"];
 
-const CARD_W = 44;
-const CARD_H = 64;
+type TrickEff = "sm" | "md" | "lg";
+
+/** Viewport-matched trick card size, shared with the play animation so the
+    flying card lands at the same size as the slot it fills. */
+export function useTrickCardSize(): TrickEff {
+  const [narrow, setNarrow] = useState(false);
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mqNarrow = window.matchMedia("(max-width: 639px)");
+    const mqWide = window.matchMedia("(min-width: 1280px)");
+    const update = () => {
+      setNarrow(mqNarrow.matches);
+      setWide(mqWide.matches);
+    };
+    update();
+    mqNarrow.addEventListener("change", update);
+    mqWide.addEventListener("change", update);
+    return () => {
+      mqNarrow.removeEventListener("change", update);
+      mqWide.removeEventListener("change", update);
+    };
+  }, []);
+  return narrow ? "sm" : wide ? "lg" : "md";
+}
+
+const TRICK_EFFS: Record<
+  TrickEff,
+  {
+    card: "sm" | "md" | "lg";
+    w: number;
+    h: number;
+    wrap: string;
+    radius: string;
+    container: string;
+  }
+> = {
+  sm: {
+    card: "sm",
+    w: 44,
+    h: 64,
+    wrap: "h-16 w-11",
+    radius: "rounded-lg",
+    container: "w-40 sm:w-56",
+  },
+  md: {
+    card: "md",
+    w: 64,
+    h: 96,
+    wrap: "h-24 w-16",
+    radius: "rounded-xl",
+    container: "w-56 sm:w-80",
+  },
+  lg: {
+    card: "lg",
+    w: 88,
+    h: 128,
+    wrap: "h-32 w-22",
+    radius: "rounded-2xl",
+    container: "w-80 sm:w-96",
+  },
+};
 
 /** Center (relative to the container) of each seat's card slot. */
 function slotCenter(
   dir: TableDir,
   w: number,
   h: number,
+  cw: number,
+  ch: number,
 ): { x: number; y: number } {
   switch (dir) {
     case "top":
-      return { x: w / 2, y: -CARD_H / 3 + CARD_H / 2 };
+      return { x: w / 2, y: -ch / 3 + ch / 2 };
     case "right":
-      return { x: w - CARD_W + CARD_W / 3 + CARD_W / 2, y: h / 2 };
+      return { x: w - cw + cw / 3 + cw / 2, y: h / 2 };
     case "bottom":
-      return { x: w / 2, y: h - CARD_H + CARD_H / 3 + CARD_H / 2 };
+      return { x: w / 2, y: h - ch + ch / 3 + ch / 2 };
     case "left":
-      return { x: -CARD_W / 3 + CARD_W / 2, y: h / 2 };
+      return { x: -cw / 3 + cw / 2, y: h / 2 };
   }
 }
 
@@ -67,6 +128,11 @@ export function TrickArea({
     { x: number; y: number }
   > | null>(null);
 
+  // Cards scale with the viewport like the hand fans: sm on phones, md on
+  // small/tablet screens, lg on wide desktop. Slot geometry must match so the
+  // collect/fly animation targets stay correct.
+  const eff = TRICK_EFFS[useTrickCardSize()];
+
   // After the countdown (collecting), fly every card (flipping over) under the
   // winner's name badge. Only recompute when the won-state or target changes.
   useEffect(() => {
@@ -78,7 +144,7 @@ export function TrickArea({
     const r = containerRef.current.getBoundingClientRect();
     const next = {} as Record<Seat, { x: number; y: number }>;
     for (const s of SEATS) {
-      const o = slotCenter(positions[s], r.width, r.height);
+      const o = slotCenter(positions[s], r.width, r.height, eff.w, eff.h);
       next[s] = {
         x: winnerTarget.x - (r.left + o.x),
         y: winnerTarget.y - (r.top + o.y),
@@ -89,7 +155,10 @@ export function TrickArea({
   }, [won, winnerTarget]);
 
   return (
-    <div ref={containerRef} className="relative aspect-square w-40 sm:w-56">
+    <div
+      ref={containerRef}
+      className={`relative aspect-square ${eff.container}`}
+    >
       {SEATS.map((seat) => {
         const card = bySeat.get(seat);
         const target = flyTo?.[seat];
@@ -111,7 +180,7 @@ export function TrickArea({
           >
             {card ? (
               <motion.div
-                className="relative h-16 w-11 rounded-xl"
+                className={`relative ${eff.wrap} overflow-hidden ${eff.radius}`}
                 style={!target && halo ? { boxShadow: halo } : undefined}
                 initial={false}
                 animate={
@@ -137,14 +206,14 @@ export function TrickArea({
                   transition={{ duration: 0.85, ease: "easeIn" }}
                 >
                   <div className="absolute inset-0 backface-hidden">
-                    <PlayingCard card={card} size="sm" playable={false} />
+                    <PlayingCard card={card} size={eff.card} playable={false} />
                   </div>
                   <div
                     className="absolute inset-0 backface-hidden"
                     style={{ transform: "rotateY(180deg)" }}
                   >
                     <div
-                      className={`card-back h-16 w-11 rounded-lg ${
+                      className={`card-back ${eff.wrap} ${eff.radius} ${
                         winner === seat ? "ring-2 ring-lime/70" : ""
                       }`}
                     />
@@ -152,7 +221,9 @@ export function TrickArea({
                 </motion.div>
               </motion.div>
             ) : (
-              <div className="h-16 w-11 rounded-lg border border-dashed border-cream/10" />
+              <div
+                className={`${eff.wrap} ${eff.radius} border border-dashed border-cream/10`}
+              />
             )}
           </div>
         );

@@ -16,8 +16,6 @@ export function Hand({
   staged = null,
   hiddenCards = [],
   onPlay,
-  size = "md",
-  compact = false,
 }: {
   cards: Card[];
   playable?: Card[] | null;
@@ -25,44 +23,51 @@ export function Hand({
   staged?: Card | null;
   hiddenCards?: Card[];
   onPlay?: (card: Card) => void;
-  size?: "sm" | "md" | "lg";
-  /** Keep the fan at the small-screen height on sm+ (used during auction to
-      leave more vertical room for the centered bid panel). */
-  compact?: boolean;
 }) {
   const [narrow, setNarrow] = useState(false);
+  const [wide, setWide] = useState(false);
   const [canHover, setCanHover] = useState(false);
   useEffect(() => {
     const mqNarrow = window.matchMedia("(max-width: 639px)");
+    const mqWide = window.matchMedia("(min-width: 1280px)");
     const mqHover = window.matchMedia("(hover: hover)");
     const update = () => {
       setNarrow(mqNarrow.matches);
+      setWide(mqWide.matches);
       setCanHover(mqHover.matches);
     };
     update();
     mqNarrow.addEventListener("change", update);
+    mqWide.addEventListener("change", update);
     mqHover.addEventListener("change", update);
     return () => {
       mqNarrow.removeEventListener("change", update);
+      mqWide.removeEventListener("change", update);
       mqHover.removeEventListener("change", update);
     };
   }, []);
 
+  // Cards scale with the viewport: md on phones, lg on small/tablet screens,
+  // xl on wide desktop. The fan must fit the aside (lg fits 36rem, xl fits
+  // 40rem), so the larger cards only appear once the aside can hold them.
+  const eff = narrow ? "md" : wide ? "xl" : "lg";
   const n = cards.length;
   const mid = (n - 1) / 2;
   const dense = n > 8;
   // Narrow screens: tuck the fan together so the spread stays on screen.
-  const k = narrow ? 0.95 : 1;
-  // Smaller cards (auction/compact) spread tighter and rise less.
-  const s = size === "sm" ? 0.7 : 1;
-  const step = k * s * (dense ? 2.4 : 3.5);
-  const offset = k * s * (dense ? 26 : 38);
-  const depth = k * s * (dense ? 1.4 : 2.4);
+  const k = narrow ? 0.85 : 1;
+  // Larger cards spread farther apart than md so the wider faces stay readable
+  // in the fan.
+  const kx = eff === "lg" ? 1.2 : eff === "xl" ? 1.3 : 1;
+  const kd = eff === "lg" || eff === "xl" ? 1.05 : 1;
+  const step = k * kx * (dense ? 2.2 : 3.2);
+  const offset = k * kx * (dense ? 26 : 38);
+  const depth = k * kd * (dense ? 1.4 : 2.4);
 
   return (
     <div
       className={`relative flex items-end justify-center pb-1 sm:pb-0 ${
-        size === "sm" ? "h-24 sm:h-36" : compact ? "h-36" : "h-36 sm:h-52"
+        eff === "md" ? "h-36 sm:h-52" : eff === "xl" ? "h-72" : "h-64"
       }`}
     >
       {cards.map((card, i) => {
@@ -110,7 +115,9 @@ export function Hand({
             }
             // On touch there's no hover, so lift the tapped card itself to reveal
             // which one is pressed before release fires onClick.
-            whileTap={clickable ? { y: y - 14, scale: 1.06, zIndex: 60 } : undefined}
+            whileTap={
+              clickable ? { y: y - 14, scale: 1.06, zIndex: 60 } : undefined
+            }
           >
             <div
               className={`rounded-xl transition-shadow ${
@@ -119,7 +126,7 @@ export function Hand({
             >
               <PlayingCard
                 card={card}
-                size={size}
+                size={eff}
                 playable={clickable}
                 dimmed={inPlay && !clickable}
                 trump={isTrump}

@@ -85,7 +85,7 @@ export function AuctionPanel({
       : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime";
 
   return (
-    <div className="mx-auto flex h-full max-h-full min-h-0 w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-cream/10 bg-felt-deep/70 p-3 backdrop-blur">
+    <div className="mx-auto flex h-full max-h-[28rem] min-h-0 w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-cream/10 bg-felt-deep/70 p-3 backdrop-blur">
       {/* History */}
       <div className="flex min-h-8 shrink-0 flex-wrap items-center gap-1.5">
         <AuctionChips entries={entries} />

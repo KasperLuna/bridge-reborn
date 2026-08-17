@@ -17,7 +17,7 @@ import { PlayingCard } from "@/components/PlayingCard";
 import { ReplayView } from "@/components/ReplayView";
 import { Scoreboard } from "@/components/Scoreboard";
 import { SeatBadge } from "@/components/SeatBadge";
-import { TrickArea, type TableDir } from "@/components/TrickArea";
+import { TrickArea, type TableDir, useTrickCardSize } from "@/components/TrickArea";
 import { Button } from "@/components/ui/Button";
 import { useGameSync } from "@/hooks/useGameSync";
 import { useRoomSync } from "@/hooks/useRoomSync";
@@ -245,6 +245,8 @@ export default function GamePage() {
     isSpectator: !!session?.isSpectator,
   });
 
+  const trickCardSize = useTrickCardSize();
+
   if (!session) return null;
   if (!game || !hand || !ruleset) {
     return (
@@ -288,6 +290,15 @@ export default function GamePage() {
   });
   const myBidTurn = mySeatData.some((d) => d.isBidTurn);
   const activeBidSeat = mySeatData.find((d) => d.isBidTurn) ?? null;
+
+  // On lg+ the player's hands move to a side column next to the table; the
+  // player's own seat anchors the first hand, the partner hand stacks below.
+  const primaryData =
+    mySeatData.find((d) => d.seat === primarySeat) ?? mySeatData[0];
+  const partnerData =
+    mySeatData.length > 1 && primaryData
+      ? (mySeatData.find((d) => d.seat !== primaryData.seat) ?? null)
+      : null;
 
   // The full bid panel sits in the felt center on sm+, but on phones it docks
   // in the footer (below the table) so it can't overlap the seat badges and
@@ -392,6 +403,100 @@ export default function GamePage() {
     }
     setStaged({ card, seat });
   }
+
+  // One seat's labeled hand + fan. Used by both the mobile footer and the lg+
+  // side column, so the pair hands render in exactly one place.
+  const renderHand = (d: (typeof mySeatData)[number]) => {
+    const active = phase === "auction" ? d.isBidTurn : d.isPlayTurn;
+    return (
+      <div key={d.seat} className="flex flex-col items-center">
+        {mySeats.length > 1 && (
+          <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold tracking-[0.25em] text-cream-dim/70 uppercase">
+            <span
+              className={`grid h-6 w-6 place-items-center rounded-full font-display text-xs font-bold ${
+                active ? "bg-lime/15 text-lime" : "bg-ink/60 text-cream-dim"
+              }`}
+            >
+              {d.seat}
+            </span>
+            {active ? (phase === "auction" ? "to bid" : "to play") : "waiting"}
+          </p>
+        )}
+        <Hand
+          cards={d.cards}
+          playable={phase === "play" && active ? d.legal : []}
+          trumpSuit={trumpSuit}
+          staged={staged?.seat === d.seat ? staged.card : null}
+          hiddenCards={d.hidden}
+          onPlay={
+            phase === "play" && active
+              ? (c) => handleCardClick(c, d.seat)
+              : !active
+                ? () => {}
+                : undefined
+          }
+        />
+      </div>
+    );
+  };
+
+  // Sort row + confirm row + the player's hand(s). Rendered in the footer on
+  // phones and in the side column on lg+; the confirm row's height is reserved
+  // during play so staging a card never shifts the layout (which would make the
+  // play-animation target stale).
+  const handsStack = (
+    <div className="flex flex-col items-center gap-3">
+      <div className="mb-1 flex items-center justify-center gap-1">
+        <span className="mr-1 text-[10px] tracking-[0.25em] text-cream-dim/60 uppercase">
+          Sort
+        </span>
+        <button
+          type="button"
+          onClick={() => setHandSort("suit")}
+          className={`rounded-md px-2 py-0.5 text-xs font-semibold transition-colors ${
+            handSort === "suit"
+              ? "bg-lime/15 text-lime"
+              : "text-cream-dim hover:text-cream"
+          }`}
+        >
+          Suit
+        </button>
+        <button
+          type="button"
+          onClick={() => setHandSort("rank")}
+          className={`rounded-md px-2 py-0.5 text-xs font-semibold transition-colors ${
+            handSort === "rank"
+              ? "bg-lime/15 text-lime"
+              : "text-cream-dim hover:text-cream"
+          }`}
+        >
+          Rank
+        </button>
+        {phase === "play" && trumpSuit && (
+          <span className="ml-2 text-[10px] tracking-[0.2em] text-lime/70 uppercase">
+            Trump {trumpSuit}
+          </span>
+        )}
+      </div>
+      {phase === "play" && (
+        <div className="flex h-11 items-center justify-center gap-2">
+          {staged && (
+            <>
+              <span className="text-sm text-cream">Play {staged.card}?</span>
+              <Button onClick={confirmPlay} disabled={!!playAnim}>
+                Play
+              </Button>
+              <Button variant="ghost" onClick={() => setStaged(null)}>
+                Cancel
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+      {primaryData && renderHand(primaryData)}
+      {mySeats.length > 1 && partnerData && renderHand(partnerData)}
+    </div>
+  );
 
   function finishPlay(card: Card, seatId?: string) {
     setStaged(null);
@@ -517,102 +622,119 @@ export default function GamePage() {
         </div>
       </header>
 
-      <div className="relative mx-auto flex min-h-0 w-full max-w-2xl flex-1 items-center justify-center px-3 sm:px-4">
-        <div
-          className={`felt relative w-full rounded-4xl sm:aspect-square sm:h-full sm:w-auto sm:max-w-full ${
-            phase === "auction" && auctionPanel
-              ? "h-full"
-              : "aspect-square max-h-full sm:max-h-none"
-          }`}
-        >
-          {SEATS.map((seat) => {
-            const rec = seatAt(seats, seat);
-            return (
-              <div
-                key={seat}
-                ref={(el) => {
-                  seatBadgeRefs.current[seat] = el;
-                }}
-                data-seat-badge={seat}
-                className={`absolute z-20 ${badgeClass(dirs[seat])}`}
-              >
-                <SeatBadge
-                  seat={seat}
-                  username={rec?.username ?? p[seat] ?? null}
-                  active={activeSeat === seat}
-                  winner={winnerSeat === seat}
-                  isMe={mySeats.includes(seat)}
-                />
-              </div>
-            );
-          })}
+      <div className="flex min-h-0 w-full flex-1 flex-col lg:flex-row">
+        <div className="relative flex min-h-0 w-full flex-1 items-center justify-center px-3 [container-type:size] sm:px-4">
+          <div
+            className={`felt relative aspect-square rounded-4xl ${
+              phase === "auction" && auctionPanel
+                ? "h-full w-full"
+                : "w-full max-h-full"
+            } sm:h-auto sm:w-[min(100cqw,100cqh)]`}
+          >
+            {SEATS.map((seat) => {
+              const rec = seatAt(seats, seat);
+              return (
+                <div
+                  key={seat}
+                  ref={(el) => {
+                    seatBadgeRefs.current[seat] = el;
+                  }}
+                  data-seat-badge={seat}
+                  className={`absolute z-20 ${badgeClass(dirs[seat])}`}
+                >
+                  <SeatBadge
+                    seat={seat}
+                    username={rec?.username ?? p[seat] ?? null}
+                    active={activeSeat === seat}
+                    winner={winnerSeat === seat}
+                    isMe={mySeats.includes(seat)}
+                  />
+                </div>
+              );
+            })}
 
-          {/* Mobile: the bid panel sits centered in the felt (between the badge
+            {/* Mobile: the bid panel sits centered in the felt (between the badge
               strips), stretching to use the play-area whitespace. */}
-          {phase === "auction" && auctionPanel && (
-            <div className="absolute inset-0 z-10 flex items-center justify-center px-3 py-14 sm:hidden">
-              <div className="flex h-full min-h-0 w-full flex-col">
-                {auctionPanel}
-              </div>
-            </div>
-          )}
-
-          <div className="absolute inset-0 flex items-center justify-center">
-            {phase === "auction" ? (
-              auctionPanel ? (
-                <div className="hidden h-full max-h-[calc(100%-7rem)] w-full sm:flex sm:items-center sm:justify-center">
+            {phase === "auction" && auctionPanel && (
+              <div className="absolute inset-0 z-10 flex items-center justify-center px-3 py-14 sm:hidden">
+                <div className="flex h-full min-h-0 w-full flex-col">
                   {auctionPanel}
                 </div>
-              ) : (
-                <div className="w-full max-w-md rounded-2xl border border-cream/10 bg-felt-deep/70 p-5 text-center backdrop-blur">
-                  <div className="flex min-h-8 flex-wrap items-center justify-center gap-1.5">
-                    <AuctionChips entries={auction} />
+              </div>
+            )}
+
+            <div className="absolute inset-0 flex items-center justify-center">
+              {phase === "auction" ? (
+                auctionPanel ? (
+                  <div className="hidden h-full max-h-[calc(100%-7rem)] w-full sm:flex sm:items-center sm:justify-center">
+                    {auctionPanel}
                   </div>
-                  <p className="mt-3 font-display text-lg text-cream">
-                    {handOver
-                      ? "Auction over"
-                      : `Waiting on ${p[bidTurn ?? "N"]}`}
-                  </p>
-                  <p className="mt-1 text-xs tracking-[0.3em] text-cream-dim/60 uppercase">
-                    auction
-                  </p>
-                </div>
-              )
-            ) : (
-              <TrickArea
-                cards={trickCards}
-                winner={winnerSeat}
-                positions={dirs}
-                trumpSuit={trumpSuit}
-                collecting={
-                  !!(wonAnim && wonAnim.phase === "collect" && !openTrick)
-                }
-                won={!!(wonAnim && wonAnim.phase === "fly" && !openTrick)}
-                winnerTarget={winnerTarget}
-                onCollected={() =>
-                  setWonAnim((prev) =>
-                    prev && prev.phase === "fly"
-                      ? { ...prev, phase: "gone" }
-                      : prev,
-                  )
-                }
-              />
+                ) : (
+                  <div className="w-full max-w-md rounded-2xl border border-cream/10 bg-felt-deep/70 p-5 text-center backdrop-blur">
+                    <div className="flex min-h-8 flex-wrap items-center justify-center gap-1.5">
+                      <AuctionChips entries={auction} />
+                    </div>
+                    <p className="mt-3 font-display text-lg text-cream">
+                      {handOver
+                        ? "Auction over"
+                        : `Waiting on ${p[bidTurn ?? "N"]}`}
+                    </p>
+                    <p className="mt-1 text-xs tracking-[0.3em] text-cream-dim/60 uppercase">
+                      auction
+                    </p>
+                  </div>
+                )
+              ) : (
+                <TrickArea
+                  cards={trickCards}
+                  winner={winnerSeat}
+                  positions={dirs}
+                  trumpSuit={trumpSuit}
+                  collecting={
+                    !!(wonAnim && wonAnim.phase === "collect" && !openTrick)
+                  }
+                  won={!!(wonAnim && wonAnim.phase === "fly" && !openTrick)}
+                  winnerTarget={winnerTarget}
+                  onCollected={() =>
+                    setWonAnim((prev) =>
+                      prev && prev.phase === "fly"
+                        ? { ...prev, phase: "gone" }
+                        : prev,
+                    )
+                  }
+                />
+              )}
+            </div>
+
+            {winnerToast && (
+              <motion.div
+                initial={{ opacity: 0, y: -12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="pointer-events-none absolute top-16 left-1/2 z-30 -translate-x-1/2 rounded-full bg-lime px-5 py-2 font-semibold whitespace-nowrap text-ink shadow-[0_0_30px_-6px_rgb(186_255_61/60%)]"
+              >
+                {winnerToast} wins the trick
+              </motion.div>
             )}
           </div>
-
-          {winnerToast && (
-            <motion.div
-              initial={{ opacity: 0, y: -12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="pointer-events-none absolute top-16 left-1/2 z-30 -translate-x-1/2 rounded-full bg-lime px-5 py-2 font-semibold whitespace-nowrap text-ink shadow-[0_0_30px_-6px_rgb(186_255_61/60%)]"
-            >
-              {winnerToast} wins the trick
-            </motion.div>
-          )}
         </div>
+
+        {!session.isSpectator && (
+          <aside className="hidden min-h-0 w-full shrink-0 overflow-y-auto p-3 lg:flex lg:w-[36rem] xl:w-[40rem] 2xl:w-[44rem]">
+            <div className="m-auto flex w-full flex-col items-center gap-3 rounded-2xl border border-cream/10 bg-felt-deep/70 px-3 pt-4 pb-20 backdrop-blur">
+              {error && (
+                <p className="mb-2 text-center text-sm text-danger">{error}</p>
+              )}
+              {!handOver && handsStack}
+            </div>
+          </aside>
+        )}
       </div>
 
-      <footer className="px-3 pt-2 pb-3 sm:px-4 sm:pb-4">
+      <footer
+        className={`px-3 pt-2 pb-3 sm:px-4 sm:pb-4 ${
+          session.isSpectator ? "" : "lg:hidden"
+        }`}
+      >
         {error && (
           <p className="mb-2 text-center text-sm text-danger">{error}</p>
         )}
@@ -651,103 +773,7 @@ export default function GamePage() {
             )}
           </div>
         ) : !handOver ? (
-          <div className="mx-auto max-w-2xl">
-            <div className="mb-1 flex items-center justify-center gap-1">
-              <span className="mr-1 text-[10px] tracking-[0.25em] text-cream-dim/60 uppercase">
-                Sort
-              </span>
-              <button
-                type="button"
-                onClick={() => setHandSort("suit")}
-                className={`rounded-md px-2 py-0.5 text-xs font-semibold transition-colors ${
-                  handSort === "suit"
-                    ? "bg-lime/15 text-lime"
-                    : "text-cream-dim hover:text-cream"
-                }`}
-              >
-                Suit
-              </button>
-              <button
-                type="button"
-                onClick={() => setHandSort("rank")}
-                className={`rounded-md px-2 py-0.5 text-xs font-semibold transition-colors ${
-                  handSort === "rank"
-                    ? "bg-lime/15 text-lime"
-                    : "text-cream-dim hover:text-cream"
-                }`}
-              >
-                Rank
-              </button>
-              {phase === "play" && trumpSuit && (
-                <span className="ml-2 text-[10px] tracking-[0.2em] text-lime/70 uppercase">
-                  Trump {trumpSuit}
-                </span>
-              )}
-            </div>
-            {/* Reserve the confirm row's height so staging a card never shifts
-                the layout. If it did, the play-animation target (captured while
-                staged) would be stale once the row clears, making the flying
-                card land above the real slot. Only during play — the auction
-                keeps that space so the bid panel fits above the seat badges. */}
-            {phase === "play" && (
-              <div className="mb-2 flex h-11 items-center justify-center gap-2">
-                {staged && (
-                  <>
-                    <span className="text-sm text-cream">
-                      Play {staged.card}?
-                    </span>
-                    <Button onClick={confirmPlay} disabled={!!playAnim}>
-                      Play
-                    </Button>
-                    <Button variant="ghost" onClick={() => setStaged(null)}>
-                      Cancel
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
-            {mySeatData.map((d) => {
-              const active = phase === "auction" ? d.isBidTurn : d.isPlayTurn;
-              return (
-                <div key={d.seat} className="flex flex-col items-center">
-                  {mySeats.length > 1 && (
-                    <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold tracking-[0.25em] text-cream-dim/70 uppercase">
-                      <span
-                        className={`grid h-6 w-6 place-items-center rounded-full font-display text-xs font-bold ${
-                          active
-                            ? "bg-lime/15 text-lime"
-                            : "bg-ink/60 text-cream-dim"
-                        }`}
-                      >
-                        {d.seat}
-                      </span>
-                      {active
-                        ? phase === "auction"
-                          ? "to bid"
-                          : "to play"
-                        : "waiting"}
-                    </p>
-                  )}
-                  <Hand
-                    cards={d.cards}
-                    playable={phase === "play" && active ? d.legal : []}
-                    trumpSuit={trumpSuit}
-                    staged={staged?.seat === d.seat ? staged.card : null}
-                    hiddenCards={d.hidden}
-                    onPlay={
-                      phase === "play" && active
-                        ? (c) => handleCardClick(c, d.seat)
-                        : !active
-                          ? () => {}
-                          : undefined
-                    }
-                    size={phase === "auction" ? "sm" : "md"}
-                    compact={mySeats.length > 1}
-                  />
-                </div>
-              );
-            })}
-          </div>
+          <div className="mx-auto max-w-2xl">{handsStack}</div>
         ) : null}
       </footer>
 
@@ -761,7 +787,7 @@ export default function GamePage() {
             if (!inFlight) finishPlay(playAnim.card, seatIdOf(playAnim.seat));
           }}
         >
-          <PlayingCard card={playAnim.card} size="sm" />
+          <PlayingCard card={playAnim.card} size={trickCardSize} />
         </motion.div>
       )}
 

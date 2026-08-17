@@ -15,6 +15,7 @@ const SIZES = {
   sm: "h-16 w-11 rounded-lg text-sm",
   md: "h-24 w-16 rounded-xl text-base",
   lg: "h-32 w-22 rounded-2xl text-lg",
+  xl: "h-40 w-28 rounded-2xl text-xl",
 } as const;
 
 export function PlayingCard({
