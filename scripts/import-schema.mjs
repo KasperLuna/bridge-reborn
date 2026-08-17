@@ -1,24 +1,11 @@
-// Imports pb_schema.json into a running PocketBase instance (admin API).
+// Aligns pb_schema.json with a running PocketBase instance (admin API).
+// Uses the bulk import endpoint: creates missing + updates existing collections.
 // Usage: node scripts/import-schema.mjs
 import fs from "fs";
 
 const PB_URL = process.env.POCKETBASE_URL || "http://127.0.0.1:8091";
 const EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || "admin@bridge.local";
 const PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || "adminadmin";
-
-// Dependency order matters: relation fields require their target collection to exist.
-const ORDER = [
-  "rooms",
-  "room_seats",
-  "kick_votes",
-  "games",
-  "hands",
-  "bids",
-  "contracts",
-  "tricks",
-  "plays",
-  "hand_results",
-];
 
 async function main() {
   const collections = JSON.parse(
@@ -37,24 +24,18 @@ async function main() {
     throw new Error("Superuser auth failed: " + JSON.stringify(auth));
   }
 
-  for (const name of ORDER) {
-    const collection = collections.find((c) => c.name === name);
-    const res = await fetch(`${PB_URL}/api/collections`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: auth.token,
-      },
-      body: JSON.stringify(collection),
-    });
-    if (res.status === 200) {
-      console.log("created", name);
-    } else {
-      const body = await res.text();
-      console.log("skip", name, res.status, body.slice(0, 80));
-    }
+  const res = await fetch(`${PB_URL}/api/collections/import`, {
+    method: "PUT",
+    headers: {
+      "content-type": "application/json",
+      authorization: auth.token,
+    },
+    body: JSON.stringify({ collections, deleteMissing: false }),
+  });
+  if (!res.ok) {
+    throw new Error("Schema import failed: " + res.status + " " + (await res.text()));
   }
-  console.log("done");
+  console.log("schema aligned:", collections.length, "collections");
 }
 
 main().catch((err) => {
