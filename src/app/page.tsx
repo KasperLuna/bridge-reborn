@@ -25,6 +25,7 @@ export default function Home() {
 
   const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [quickOpen, setQuickOpen] = useState(false);
@@ -49,7 +50,7 @@ export default function Home() {
     }
     setBusy(true);
     try {
-      await join(targetCode, username.trim());
+      await join(targetCode, username.trim(), password.trim() || undefined);
       router.push(`/room/${targetCode}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to join");
@@ -119,6 +120,18 @@ export default function Home() {
               placeholder="Leave blank to create"
               maxLength={8}
               className="min-h-11 rounded-xl border border-cream/15 bg-ink/50 px-4 font-mono tracking-widest text-cream placeholder:text-cream-dim/40 focus:border-lime/60 focus:outline-none"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5">
+            <span className="text-sm text-cream-dim">Room password</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password (for private rooms)"
+              maxLength={64}
+              className="min-h-11 rounded-xl border border-cream/15 bg-ink/50 px-4 text-cream placeholder:text-cream-dim/40 focus:border-lime/60 focus:outline-none"
             />
           </label>
 

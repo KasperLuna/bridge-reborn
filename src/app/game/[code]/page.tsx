@@ -6,7 +6,9 @@ import { motion } from "motion/react";
 
 import { AuctionPanel } from "@/components/AuctionPanel";
 import { Hand } from "@/components/Hand";
+import { KickDialog } from "@/components/KickPanel";
 import { PlayingCard } from "@/components/PlayingCard";
+import { ReplayView } from "@/components/ReplayView";
 import { Scoreboard } from "@/components/Scoreboard";
 import { SeatBadge } from "@/components/SeatBadge";
 import { TrickArea, type TableDir } from "@/components/TrickArea";
@@ -17,6 +19,7 @@ import { sortHand, sortHandByRank } from "@/lib/game/cards";
 import { opponentsOf, partnershipOf, seatOfUsername } from "@/lib/game/seats";
 import type { Card, GamePlayers, Seat } from "@/lib/game/types";
 import { resolveRuleset } from "@/lib/rulesets";
+import { badgeClass, SEATS, seatDir } from "@/lib/table-layout";
 import type { HandResultRecord, PlayRecord, RoomMode } from "@/lib/types";
 import { useGameStore } from "@/store/game-store";
 import { useRoomStore } from "@/store/room-store";
@@ -35,50 +38,6 @@ import {
   seatAt,
   trickPlaysFor,
 } from "@/store/selectors";
-
-/**
- * Seat badge placement. E/W normally sit at the mid-sides, right next to their
- * trick-card slots. During the auction the centered bid panel occupies the felt
- * (it's near table-sized on smaller viewports), so they tuck into the top
- * corners on every breakpoint to stay clear of it.
- */
-function badgeClass(dir: TableDir, auction: boolean): string {
-  switch (dir) {
-    case "top":
-      return "left-1/2 top-2 -translate-x-1/2";
-    case "bottom":
-      return "bottom-2 left-1/2 -translate-x-1/2";
-    case "right":
-      return auction ? "top-2 right-2" : "right-2 top-1/2 -translate-y-1/2";
-    case "left":
-      return auction ? "top-2 left-2" : "left-2 top-1/2 -translate-y-1/2";
-    default:
-      return "";
-  }
-}
-
-const SEATS: Seat[] = ["N", "E", "S", "W"];
-
-/** Maps a seat to a screen direction so the player's own seat sits at the bottom. */
-function seatDir(seat: Seat, mySeat: Seat | null): TableDir {
-  if (!mySeat) {
-    const base: Record<Seat, TableDir> = {
-      N: "top",
-      E: "right",
-      S: "bottom",
-      W: "left",
-    };
-    return base[seat];
-  }
-  const dir = (SEATS.indexOf(seat) - SEATS.indexOf(mySeat) + 4) % 4;
-  return dir === 0
-    ? "bottom"
-    : dir === 1
-      ? "left"
-      : dir === 2
-        ? "top"
-        : "right";
-}
 
 /**
  * The seat a play came from. Plays record their seat explicitly; fall back to
@@ -126,7 +85,10 @@ export default function GamePage() {
   } | null>(null);
   const [inFlight, setInFlight] = useState(false);
   const [showAuction, setShowAuction] = useState(false);
+  const [showReplay, setShowReplay] = useState(false);
   const [confirmConcede, setConfirmConcede] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [kickOpen, setKickOpen] = useState(false);
   const [wonAnim, setWonAnim] = useState<{
     trickId: string;
     winnerSeat: Seat;
@@ -465,13 +427,48 @@ export default function GamePage() {
           ewNeeded={ewNeeded}
           onContractClick={() => setShowAuction(true)}
         />
-        <Button
-          variant="ghost"
-          onClick={() => setConfirmConcede(true)}
-          disabled={handOver || pending}
-        >
-          Concede
-        </Button>
+        <div className="relative">
+          <Button
+            variant="ghost"
+            disabled={pending}
+            onClick={() => setMenuOpen((o) => !o)}
+          >
+            Options
+          </Button>
+          {menuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-30"
+                onClick={() => setMenuOpen(false)}
+              />
+              <div className="absolute top-full right-0 z-40 mt-2 flex w-44 flex-col gap-1 rounded-2xl border border-cream/10 bg-felt-deep/95 p-2 backdrop-blur">
+                <button
+                  type="button"
+                  disabled={handOver || pending}
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setConfirmConcede(true);
+                  }}
+                  className="rounded-lg px-3 py-2 text-left text-sm text-danger transition-colors hover:bg-cream/5 disabled:opacity-40"
+                >
+                  Concede
+                </button>
+                {room?.mode === "four" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setKickOpen(true);
+                    }}
+                    className="rounded-lg px-3 py-2 text-left text-sm text-cream transition-colors hover:bg-cream/5"
+                  >
+                    Kick player
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
       <div className="relative mx-auto flex min-h-0 w-full max-w-2xl flex-1 items-center justify-center px-3 sm:px-4">
@@ -581,6 +578,9 @@ export default function GamePage() {
               onClick={() => setSpectatorVisible((v) => !v)}
             >
               {spectatorVisible ? "Hide all hands" : "Reveal all hands"}
+            </Button>
+            <Button variant="ghost" onClick={() => setShowReplay(true)}>
+              Replay game
             </Button>
             {spectatorVisible && (
               <div className="grid w-full max-w-4xl grid-cols-2 gap-2 sm:grid-cols-4">
@@ -726,6 +726,16 @@ export default function GamePage() {
         />
       )}
 
+      <ReplayView
+        open={showReplay}
+        onClose={() => setShowReplay(false)}
+        roomId={session.roomId}
+      />
+
+      {kickOpen && room?.mode === "four" && (
+        <KickDialog onClose={() => setKickOpen(false)} />
+      )}
+
       {confirmConcede && (
         <div
           className="fixed inset-0 z-50 grid place-items-center bg-ink/80 p-4 backdrop-blur-sm"
@@ -789,6 +799,7 @@ export default function GamePage() {
           onNext={() => void startNewGame()}
           onSpectate={handleSpectate}
           onLeave={handleLeave}
+          onReplay={() => setShowReplay(true)}
         />
       )}
     </main>
@@ -862,6 +873,7 @@ function HandOverOverlay({
   onNext,
   onSpectate,
   onLeave,
+  onReplay,
 }: {
   result: HandResultRecord | null;
   contractShorthand: string;
@@ -887,6 +899,7 @@ function HandOverOverlay({
   onNext: () => void;
   onSpectate: () => void;
   onLeave: () => void;
+  onReplay: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [inspect, setInspect] = useState(false);
@@ -1027,6 +1040,10 @@ function HandOverOverlay({
                 Leave room
               </Button>
             </div>
+
+            <Button className="mt-2 w-full" variant="ghost" onClick={onReplay}>
+              Replay game
+            </Button>
 
             <Button
               className="mt-2 w-full"

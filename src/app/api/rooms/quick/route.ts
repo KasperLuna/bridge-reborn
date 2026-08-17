@@ -46,6 +46,9 @@ export async function POST(req: Request) {
       mode: body.mode,
       ruleset: getPreset(DEFAULT_RULESET_ID),
       started_at: body.mode === "solo" ? new Date().toISOString() : "",
+      joinable: body.mode === "solo" ? false : true,
+      privacy: "public",
+      password_hash: "",
     });
 
     const primarySeat = body.mode === "solo" ? "N" : "N";

@@ -8,6 +8,7 @@ import { runBotTurns } from "@/server/bots";
 import { errorResponse } from "@/server/errors";
 import { createGameWithHand, getRoomByCode } from "@/server/helpers";
 import { getAdminClient } from "@/server/pb";
+import { verifyPassword } from "@/server/room-password";
 
 const SEAT_ORDER: Seat[] = ["N", "S", "E", "W"];
 
@@ -19,6 +20,7 @@ const JoinSchema = z.object({
     .refine((v) => /^[A-Z0-9]{4,8}$/.test(v), "Invalid room code"),
   username: z.string().trim().min(1, "Username required").max(40),
   wantSpectator: z.boolean().optional().default(false),
+  password: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -42,7 +44,30 @@ export async function POST(req: Request) {
         status: "waiting",
         mode: "four",
         ruleset: getPreset(DEFAULT_RULESET_ID),
+        joinable: true,
+        privacy: "public",
+        password_hash: "",
       });
+    }
+
+    // Existing rooms: solo rooms are non-joinable; private rooms need the
+    // password. These gates cover the rejoin, pairs, and spectator paths below.
+    if (room.joinable === false) {
+      return NextResponse.json(
+        { error: "Room is not joinable" },
+        { status: 403 },
+      );
+    }
+    if (room.privacy === "private") {
+      if (!body.password) {
+        return NextResponse.json(
+          { error: "Password required" },
+          { status: 403 },
+        );
+      }
+      if (!verifyPassword(body.password, room.password_hash)) {
+        return NextResponse.json({ error: "Wrong password" }, { status: 403 });
+      }
     }
 
     // Rejoin: update joined_at and hand back the existing seat.

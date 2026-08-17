@@ -4,17 +4,19 @@ import { create } from "zustand";
 
 import * as api from "@/lib/api";
 import type { Seat } from "@/lib/game/types";
-import type { Room, RoomSeat } from "@/lib/types";
+import type { KickVote, Room, RoomSeat } from "@/lib/types";
 
 import { useSessionStore } from "./session-store";
 
 type RoomState = {
   room: Room | null;
   seats: RoomSeat[];
+  kickVotes: KickVote[];
   loading: boolean;
   error: string | null;
   setRoom: (room: Room | null) => void;
   setSeats: (seats: RoomSeat[]) => void;
+  setKickVotes: (votes: KickVote[]) => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   reset: () => void;
@@ -22,7 +24,13 @@ type RoomState = {
   leave: () => Promise<void>;
   ready: (ready: boolean) => Promise<void>;
   changeRuleset: (presetId: string) => Promise<void>;
+  changePrivacy: (
+    privacy: "public" | "private",
+    password?: string,
+  ) => Promise<void>;
   start: () => Promise<void>;
+  startKick: (targetUsername: string) => Promise<void>;
+  castKickVote: (voteId: string, yes: boolean) => Promise<void>;
 };
 
 function requireSession() {
@@ -34,14 +42,17 @@ function requireSession() {
 export const useRoomStore = create<RoomState>((set) => ({
   room: null,
   seats: [],
+  kickVotes: [],
   loading: false,
   error: null,
 
   setRoom: (room) => set({ room }),
   setSeats: (seats) => set({ seats }),
+  setKickVotes: (votes) => set({ kickVotes: votes }),
   setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
-  reset: () => set({ room: null, seats: [], loading: false, error: null }),
+  reset: () =>
+    set({ room: null, seats: [], kickVotes: [], loading: false, error: null }),
 
   claim: async (seat) => {
     const session = requireSession();
@@ -67,7 +78,27 @@ export const useRoomStore = create<RoomState>((set) => ({
     await api.setRuleset(requireSession(), presetId);
   },
 
+  changePrivacy: async (privacy, password) => {
+    await api.setPrivacy(requireSession(), privacy, password);
+  },
+
   start: async () => {
     await api.startGame(requireSession());
+  },
+
+  startKick: async (targetUsername) => {
+    try {
+      await api.startKick(requireSession(), targetUsername);
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : "Kick failed" });
+    }
+  },
+
+  castKickVote: async (voteId, yes) => {
+    try {
+      await api.castKickVote(requireSession(), voteId, yes);
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : "Vote failed" });
+    }
   },
 }));

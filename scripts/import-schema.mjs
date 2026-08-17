@@ -1,6 +1,6 @@
 // Imports pb_schema.json into a running PocketBase instance (admin API).
 // Usage: node scripts/import-schema.mjs
-const fs = require("fs");
+import fs from "fs";
 
 const PB_URL = process.env.POCKETBASE_URL || "http://127.0.0.1:8091";
 const EMAIL = process.env.POCKETBASE_ADMIN_EMAIL || "admin@bridge.local";
@@ -10,6 +10,7 @@ const PASSWORD = process.env.POCKETBASE_ADMIN_PASSWORD || "adminadmin";
 const ORDER = [
   "rooms",
   "room_seats",
+  "kick_votes",
   "games",
   "hands",
   "bids",

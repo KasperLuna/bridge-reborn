@@ -20,6 +20,9 @@ export type Room = {
   ruleset: unknown;
   started_at: string;
   ended_at: string;
+  privacy: "public" | "private";
+  password_hash: string;
+  joinable: boolean;
   created: string;
   updated: string;
 };
@@ -35,6 +38,20 @@ export type RoomSeat = {
   is_bot: boolean;
   ready: boolean;
   joined_at: string;
+  created: string;
+  updated: string;
+};
+
+/** A vote to kick a seated player out of a `four` mode room. */
+export type KickVote = {
+  id: string;
+  room_id: string;
+  target_username: string;
+  initiator_username: string;
+  votes_yes: string[];
+  votes_no: string[];
+  status: "open" | "passed";
+  expires_at: string;
   created: string;
   updated: string;
 };

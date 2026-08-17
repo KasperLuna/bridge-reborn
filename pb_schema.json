@@ -202,15 +202,7 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": [
-          "1",
-          "2",
-          "3",
-          "4",
-          "5",
-          "6",
-          "7"
-        ]
+        "values": ["1", "2", "3", "4", "5", "6", "7"]
       },
       {
         "help": "",
@@ -222,13 +214,7 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": [
-          "C",
-          "D",
-          "H",
-          "S",
-          "NT"
-        ]
+        "values": ["C", "D", "H", "S", "NT"]
       },
       {
         "help": "",
@@ -260,12 +246,7 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": [
-          "N",
-          "S",
-          "E",
-          "W"
-        ]
+        "values": ["N", "S", "E", "W"]
       }
     ],
     "indexes": [],
@@ -733,12 +714,7 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": [
-          "N",
-          "S",
-          "E",
-          "W"
-        ]
+        "values": ["N", "S", "E", "W"]
       },
       {
         "help": "",
@@ -750,12 +726,7 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": [
-          "none",
-          "ns",
-          "ew",
-          "both"
-        ]
+        "values": ["none", "ns", "ew", "both"]
       },
       {
         "help": "",
@@ -933,12 +904,7 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": [
-          "N",
-          "S",
-          "E",
-          "W"
-        ]
+        "values": ["N", "S", "E", "W"]
       }
     ],
     "indexes": [],
@@ -1028,12 +994,7 @@
         "required": false,
         "system": false,
         "type": "select",
-        "values": [
-          "N",
-          "S",
-          "E",
-          "W"
-        ]
+        "values": ["N", "S", "E", "W"]
       },
       {
         "help": "",
@@ -1161,11 +1122,7 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": [
-          "waiting",
-          "active",
-          "finished"
-        ]
+        "values": ["waiting", "active", "finished"]
       },
       {
         "help": "",
@@ -1201,11 +1158,183 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": [
-          "four",
-          "pairs",
-          "solo"
-        ]
+        "values": ["four", "pairs", "solo"]
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "select700000001",
+        "maxSelect": 1,
+        "name": "privacy",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "select",
+        "values": ["public", "private"]
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text700000001",
+        "max": 64,
+        "min": 0,
+        "name": "password_hash",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "bool700000001",
+        "name": "joinable",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "bool"
+      }
+    ],
+    "indexes": [],
+    "system": false
+  },
+  {
+    "id": "kickvotes00001",
+    "listRule": "",
+    "viewRule": "",
+    "createRule": "",
+    "updateRule": "",
+    "deleteRule": "",
+    "name": "kick_votes",
+    "type": "base",
+    "fields": [
+      {
+        "autogeneratePattern": "[a-z0-9]{15}",
+        "help": "",
+        "hidden": false,
+        "id": "text3208210256",
+        "max": 15,
+        "min": 15,
+        "name": "id",
+        "pattern": "^[a-z0-9]+$",
+        "presentable": false,
+        "primaryKey": true,
+        "required": true,
+        "system": true,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "autodate2990389176",
+        "name": "created",
+        "onCreate": true,
+        "onUpdate": false,
+        "presentable": false,
+        "system": true,
+        "type": "autodate"
+      },
+      {
+        "hidden": false,
+        "id": "autodate3332085495",
+        "name": "updated",
+        "onCreate": true,
+        "onUpdate": true,
+        "presentable": false,
+        "system": true,
+        "type": "autodate"
+      },
+      {
+        "cascadeDelete": true,
+        "collectionId": "rooms00000001",
+        "help": "",
+        "hidden": false,
+        "id": "rel1000000011",
+        "maxSelect": 1,
+        "minSelect": 0,
+        "name": "room_id",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "relation"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text700000002",
+        "max": 100,
+        "min": 0,
+        "name": "target_username",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text700000003",
+        "max": 100,
+        "min": 0,
+        "name": "initiator_username",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": true,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "json700000001",
+        "maxSize": 5242880,
+        "name": "votes_yes",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "json"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "json700000002",
+        "maxSize": 5242880,
+        "name": "votes_no",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "json"
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "select700000002",
+        "maxSelect": 1,
+        "name": "status",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "select",
+        "values": ["open", "passed"]
+      },
+      {
+        "help": "",
+        "hidden": false,
+        "id": "date700000001",
+        "max": "",
+        "min": "",
+        "name": "expires_at",
+        "presentable": false,
+        "required": true,
+        "system": false,
+        "type": "date"
       }
     ],
     "indexes": [],
@@ -1323,12 +1452,7 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": [
-          "N",
-          "S",
-          "E",
-          "W"
-        ]
+        "values": ["N", "S", "E", "W"]
       },
       {
         "help": "",
@@ -1340,12 +1464,7 @@
         "required": false,
         "system": false,
         "type": "select",
-        "values": [
-          "N",
-          "S",
-          "E",
-          "W"
-        ]
+        "values": ["N", "S", "E", "W"]
       }
     ],
     "indexes": [],

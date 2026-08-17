@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { pb } from "@/lib/pb";
 import { onRealtimeReconnect, subscribe } from "@/lib/realtime";
-import type { Room, RoomSeat, Session } from "@/lib/types";
+import type { KickVote, Room, RoomSeat, Session } from "@/lib/types";
 import { useRoomStore } from "@/store/room-store";
 
 /** Fetches room + seats and keeps them in sync via realtime. */
@@ -19,16 +19,21 @@ export function useRoomSync(session: Session | null) {
 
     const fetchAll = async () => {
       try {
-        const [room, seats] = await Promise.all([
+        const [room, seats, kickVotes] = await Promise.all([
           pb.collection("rooms").getOne<Room>(roomId),
           pb.collection("room_seats").getFullList<RoomSeat>({
             filter: pb.filter("room_id = {:roomId}", { roomId }),
             sort: "joined_at",
           }),
+          pb.collection("kick_votes").getFullList<KickVote>({
+            filter: pb.filter("room_id = {:roomId}", { roomId }),
+            sort: "created",
+          }),
         ]);
         if (disposed) return;
         store.setRoom(room);
         store.setSeats(seats);
+        store.setKickVotes(kickVotes);
       } catch {
         if (!disposed) store.setRoom(null);
       }
@@ -42,6 +47,9 @@ export function useRoomSync(session: Session | null) {
         else store.setRoom(e.record);
       }),
       subscribe<RoomSeat>("room_seats", `room_id = "${roomId}"`, () => {
+        void fetchAll();
+      }),
+      subscribe<KickVote>("kick_votes", `room_id = "${roomId}"`, () => {
         void fetchAll();
       }),
     ];

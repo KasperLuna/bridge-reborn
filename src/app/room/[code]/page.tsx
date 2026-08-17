@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 import { SeatBadge } from "@/components/SeatBadge";
+import { KickPanel } from "@/components/KickPanel";
 import { Button } from "@/components/ui/Button";
 import type { Seat } from "@/lib/game/types";
 import { pb } from "@/lib/pb";
@@ -43,10 +44,14 @@ export default function RoomPage() {
   const leave = useRoomStore((s) => s.leave);
   const ready = useRoomStore((s) => s.ready);
   const changeRuleset = useRoomStore((s) => s.changeRuleset);
+  const changePrivacy = useRoomStore((s) => s.changePrivacy);
   const start = useRoomStore((s) => s.start);
 
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
+  const [joinPw, setJoinPw] = useState("");
+  const [privacyPw, setPrivacyPw] = useState("");
+  const [showPrivacyPw, setShowPrivacyPw] = useState(false);
 
   useRoomSync(session);
 
@@ -105,7 +110,7 @@ export default function RoomPage() {
     if (!name.trim() || busy) return;
     setBusy(true);
     try {
-      await join(code, name.trim());
+      await join(code, name.trim(), joinPw.trim() || undefined);
     } catch (err) {
       useRoomStore
         .getState()
@@ -135,9 +140,16 @@ export default function RoomPage() {
           <p className="text-xs tracking-[0.4em] text-lime/70 uppercase">
             Table
           </p>
-          <h1 className="font-display text-4xl font-black tracking-widest text-cream">
-            {code}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-4xl font-black tracking-widest text-cream">
+              {code}
+            </h1>
+            {room?.privacy === "private" && (
+              <span className="rounded-full border border-lime/40 bg-lime/10 px-2 py-0.5 text-[10px] font-semibold tracking-wider text-lime uppercase">
+                🔒 Private
+              </span>
+            )}
+          </div>
         </div>
         <Button
           variant="ghost"
@@ -226,6 +238,19 @@ export default function RoomPage() {
                   className="min-h-11 rounded-xl border border-cream/15 bg-ink/50 px-4 text-cream placeholder:text-cream-dim/40 focus:border-lime/60 focus:outline-none"
                 />
               </label>
+              {room?.privacy === "private" && (
+                <label className="flex flex-col gap-1.5">
+                  <span className="text-sm text-cream-dim">Password</span>
+                  <input
+                    type="password"
+                    value={joinPw}
+                    onChange={(e) => setJoinPw(e.target.value)}
+                    placeholder="Room password"
+                    maxLength={64}
+                    className="min-h-11 rounded-xl border border-cream/15 bg-ink/50 px-4 text-cream placeholder:text-cream-dim/40 focus:border-lime/60 focus:outline-none"
+                  />
+                </label>
+              )}
               <Button type="submit" disabled={busy || !name.trim()}>
                 Join table
               </Button>
@@ -331,6 +356,60 @@ export default function RoomPage() {
                     </select>
                   </label>
                 )}
+              {isSeated &&
+                room?.mode === "four" &&
+                room?.status === "waiting" && (
+                  <label className="flex items-center gap-2 text-sm text-cream-dim">
+                    <span>Privacy</span>
+                    <select
+                      value={room?.privacy ?? "public"}
+                      disabled={busy}
+                      onChange={(e) => {
+                        const value = e.target.value as "public" | "private";
+                        if (value === "public") {
+                          setShowPrivacyPw(false);
+                          void run(() => changePrivacy("public"));
+                        } else {
+                          setShowPrivacyPw(true);
+                        }
+                      }}
+                      className="min-h-11 rounded-xl border border-cream/15 bg-ink/60 px-3 text-cream focus:border-lime/60 focus:outline-none disabled:opacity-40"
+                    >
+                      <option value="public">Public</option>
+                      <option value="private">Private</option>
+                    </select>
+                  </label>
+                )}
+              {isSeated &&
+                room?.mode === "four" &&
+                room?.status === "waiting" &&
+                showPrivacyPw && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="password"
+                      value={privacyPw}
+                      onChange={(e) => setPrivacyPw(e.target.value)}
+                      placeholder="New password"
+                      maxLength={64}
+                      className="min-h-11 w-40 rounded-xl border border-cream/15 bg-ink/60 px-3 text-cream placeholder:text-cream-dim/40 focus:border-lime/60 focus:outline-none"
+                    />
+                    <Button
+                      variant="ghost"
+                      className="px-3"
+                      disabled={busy || privacyPw.trim().length < 4}
+                      onClick={() =>
+                        void run(async () => {
+                          await changePrivacy("private", privacyPw.trim());
+                          setPrivacyPw("");
+                          setShowPrivacyPw(false);
+                        })
+                      }
+                    >
+                      Set password
+                    </Button>
+                  </div>
+                )}
+              {isSeated && room?.mode === "four" && <KickPanel />}
               {isSeated && (
                 <Button
                   variant="ghost"

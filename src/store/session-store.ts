@@ -12,7 +12,7 @@ type SessionState = {
   init: () => void;
   set: (session: Session) => void;
   clear: () => void;
-  join: (code: string, username: string) => Promise<void>;
+  join: (code: string, username: string, password?: string) => Promise<void>;
   quick: (mode: "solo" | "pairs", username: string) => Promise<Session>;
 };
 
@@ -34,8 +34,8 @@ export const useSessionStore = create<SessionState>((set) => ({
     set({ session: null });
   },
 
-  join: async (code, username) => {
-    const result = await api.joinRoom(code, username);
+  join: async (code, username, password) => {
+    const result = await api.joinRoom(code, username, false, password);
     saveSession(result);
     set({ session: result });
   },

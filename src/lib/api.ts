@@ -1,5 +1,5 @@
 import type { Seat } from "@/lib/game/types";
-import type { Session } from "@/lib/types";
+import type { KickVote, Session } from "@/lib/types";
 
 async function post<T>(url: string, body: unknown): Promise<T> {
   return request<T>(url, "POST", body);
@@ -34,8 +34,14 @@ export function joinRoom(
   code: string,
   username: string,
   wantSpectator = false,
+  password?: string,
 ): Promise<Session> {
-  return post<Session>("/api/rooms/join", { code, username, wantSpectator });
+  return post<Session>("/api/rooms/join", {
+    code,
+    username,
+    wantSpectator,
+    ...(password ? { password } : {}),
+  });
 }
 
 /** Starts a quick game: `solo` (1 human + 3 bots) or `pairs` (2 humans). */
@@ -62,6 +68,34 @@ export function leaveSeat(session: Session): Promise<{ ok: true }> {
   return post("/api/rooms/seats/leave", session);
 }
 
+export type KickResult = {
+  ok: true;
+  kicked?: string;
+  vote?: KickVote;
+};
+
+export function startKick(
+  session: Session,
+  targetUsername: string,
+): Promise<KickResult> {
+  return post(`/api/rooms/${session.code}/kick`, {
+    ...session,
+    targetUsername,
+  });
+}
+
+export function castKickVote(
+  session: Session,
+  voteId: string,
+  yes: boolean,
+): Promise<KickResult> {
+  return post(`/api/rooms/${session.code}/kick/vote`, {
+    ...session,
+    voteId,
+    yes,
+  });
+}
+
 export function setReady(
   session: Session,
   ready: boolean,
@@ -76,6 +110,18 @@ export function setRuleset(
   return patch(`/api/rooms/${session.code}/ruleset`, {
     ...session,
     presetId,
+  }).then(() => ({ ok: true as const }));
+}
+
+export function setPrivacy(
+  session: Session,
+  privacy: "public" | "private",
+  password?: string,
+): Promise<{ ok: true }> {
+  return patch(`/api/rooms/${session.code}/privacy`, {
+    ...session,
+    privacy,
+    ...(password ? { password } : {}),
   }).then(() => ({ ok: true as const }));
 }
 

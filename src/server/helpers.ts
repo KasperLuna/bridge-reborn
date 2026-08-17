@@ -75,6 +75,47 @@ export async function getSeatedPlayers(
   return seats.filter((s) => !s.is_spectator && s.seat);
 }
 
+/** Soft-remove a player: their seated records become spectator records, the
+    room drops back to `waiting`, and the remaining seated players unready.
+    Shared by leave and vote-kick forced leaves. */
+export async function softRemoveSeats(
+  pb: PocketBase,
+  roomId: string,
+  username: string,
+): Promise<void> {
+  const mine = await pb.collection("room_seats").getFullList<RoomSeat>({
+    filter: pb.filter(
+      "room_id = {:roomId} && username = {:username} && is_spectator = false",
+      { roomId, username },
+    ),
+  });
+  await Promise.all(
+    mine.map((s) =>
+      pb.collection("room_seats").update(s.id, {
+        seat: "",
+        is_spectator: true,
+        ready: false,
+      }),
+    ),
+  );
+
+  // Send the room back to the lobby unless a concede already finished it.
+  const room = await pb.collection("rooms").getOne<{ status: string }>(roomId);
+  if (room.status !== "finished") {
+    await pb.collection("rooms").update(roomId, { status: "waiting" });
+    const remaining = await pb.collection("room_seats").getFullList<RoomSeat>({
+      filter: pb.filter("room_id = {:roomId} && is_spectator = false", {
+        roomId,
+      }),
+    });
+    await Promise.all(
+      remaining.map((s) =>
+        pb.collection("room_seats").update(s.id, { ready: false }),
+      ),
+    );
+  }
+}
+
 /** Reset every seated player's ready flag (used when a hand ends). */
 export async function unreadyRoomPlayers(
   pb: PocketBase,
