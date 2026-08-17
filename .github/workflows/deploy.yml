@@ -14,4 +14,12 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker compose up -d --build
       - name: Align PocketBase schema
-        run: node scripts/import-schema.mjs
+        run: |
+          net="$(docker inspect "$(docker compose ps -q pocketbase)" --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}')"
+          docker run --rm \
+            --network "$net" \
+            -e POCKETBASE_URL="$POCKETBASE_URL" \
+            -e POCKETBASE_ADMIN_EMAIL="$POCKETBASE_ADMIN_EMAIL" \
+            -e POCKETBASE_ADMIN_PASSWORD="$POCKETBASE_ADMIN_PASSWORD" \
+            -v "$PWD:/work" -w /work \
+            node:22-alpine node scripts/import-schema.mjs
