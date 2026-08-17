@@ -243,10 +243,7 @@ export function ReplayView({
               {SEATS.map((seat) => (
                 <div
                   key={seat}
-                  className={`absolute z-20 ${badgeClass(
-                    seatDir(seat, null),
-                    state.phase === "auction",
-                  )}`}
+                  className={`absolute z-20 ${badgeClass(seatDir(seat, null))}`}
                 >
                   <SeatBadge seat={seat} username={state.usernames[seat]} />
                 </div>

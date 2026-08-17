@@ -528,10 +528,7 @@ export default function GamePage() {
                   seatBadgeRefs.current[seat] = el;
                 }}
                 data-seat-badge={seat}
-                className={`absolute z-20 ${badgeClass(
-                  dirs[seat],
-                  phase === "auction",
-                )}`}
+                className={`absolute z-20 ${badgeClass(dirs[seat])}`}
               >
                 <SeatBadge
                   seat={seat}
@@ -557,7 +554,7 @@ export default function GamePage() {
           <div className="absolute inset-0 flex items-center justify-center">
             {phase === "auction" ? (
               auctionPanel ? (
-                <div className="hidden h-full max-h-[calc(100%-7rem)] sm:block">
+                <div className="hidden h-full max-h-[calc(100%-7rem)] w-full sm:flex sm:items-center sm:justify-center">
                   {auctionPanel}
                 </div>
               ) : (

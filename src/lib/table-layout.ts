@@ -4,21 +4,21 @@ import type { Seat } from "@/lib/game/types";
 export const SEATS: Seat[] = ["N", "E", "S", "W"];
 
 /**
- * Seat badge placement. E/W normally sit at the mid-sides, right next to their
- * trick-card slots. During the auction the centered bid panel occupies the felt
- * (it's near table-sized on smaller viewports), so they tuck into the top
- * corners on every breakpoint to stay clear of it.
+ * Seat badge placement. E/W always sit in the top corners; the mid-sides are
+ * reserved for the trick-card slots, which sit at the same height as the
+ * mid-side badges used to and got overlapped by them on short/landscape
+ * viewports.
  */
-export function badgeClass(dir: TableDir, auction: boolean): string {
+export function badgeClass(dir: TableDir): string {
   switch (dir) {
     case "top":
       return "left-1/2 top-2 -translate-x-1/2";
     case "bottom":
       return "bottom-2 left-1/2 -translate-x-1/2";
     case "right":
-      return auction ? "top-2 right-2" : "right-2 top-1/2 -translate-y-1/2";
+      return "top-2 right-2";
     case "left":
-      return auction ? "top-2 left-2" : "left-2 top-1/2 -translate-y-1/2";
+      return "top-2 left-2";
     default:
       return "";
   }

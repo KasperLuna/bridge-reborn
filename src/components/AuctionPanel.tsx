@@ -14,21 +14,27 @@ export function AuctionPanel({
   legal,
   myTurn,
   disabled,
+  staged = null,
   onCall,
 }: {
   entries: { call: string; side: "NS" | "EW"; username: string }[];
   legal: LegalCalls;
   myTurn: boolean;
   disabled: boolean;
+  staged?: string | null;
   onCall: (call: string) => void;
 }) {
+  const selected = (call: string) =>
+    staged === call
+      ? "border-lime/60 bg-lime/15 text-lime"
+      : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime";
   const locked = disabled || !myTurn;
   const lastEntries = entries.slice(-6);
 
   return (
-    <div className="flex h-full min-h-0 w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-cream/10 bg-felt-deep/70 p-4 backdrop-blur">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-cream/10 bg-felt-deep/70 p-3 backdrop-blur">
       {/* History */}
-      <div className="flex min-h-10 flex-wrap items-center gap-1.5">
+      <div className="flex min-h-8 flex-wrap items-center gap-1.5">
         {lastEntries.length === 0 && (
           <span className="text-sm text-cream-dim/50">Auction opens here</span>
         )}
@@ -55,7 +61,7 @@ export function AuctionPanel({
       <div className="flex gap-2">
         <Button
           variant="ghost"
-          className="flex-1"
+          className={`flex-1 ${selected("P")}`}
           disabled={locked || !legal.canPass}
           onClick={() => onCall("P")}
         >
@@ -63,7 +69,7 @@ export function AuctionPanel({
         </Button>
         <Button
           variant="ghost"
-          className="flex-1"
+          className={`flex-1 ${selected("X")}`}
           disabled={locked || !legal.canDouble}
           onClick={() => onCall("X")}
         >
@@ -71,7 +77,7 @@ export function AuctionPanel({
         </Button>
         <Button
           variant="ghost"
-          className="flex-1"
+          className={`flex-1 ${selected("XX")}`}
           disabled={locked || !legal.canRedouble}
           onClick={() => onCall("XX")}
         >
@@ -80,7 +86,7 @@ export function AuctionPanel({
       </div>
 
       {/* Bid grid */}
-      <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-5 gap-1 overflow-y-auto">
+      <div className="grid min-h-0 flex-1 auto-rows-[minmax(2rem,1fr)] grid-cols-5 gap-1 overflow-y-auto">
         {LEVELS.map((level) =>
           STRAINS.map((strain) => {
             const call = `${level}${strain}`;
@@ -94,7 +100,7 @@ export function AuctionPanel({
                 type="button"
                 disabled={locked || !allowed}
                 onClick={() => onCall(call)}
-                className="min-h-9 rounded-lg border border-cream/10 bg-cream/5 text-sm font-semibold text-cream transition-colors hover:border-lime/60 hover:text-lime disabled:cursor-not-allowed disabled:opacity-30"
+                className="min-h-8 rounded-lg border border-cream/10 bg-cream/5 text-sm font-semibold text-cream transition-colors hover:border-lime/60 hover:text-lime disabled:cursor-not-allowed disabled:opacity-30"
               >
                 {call}
               </button>
