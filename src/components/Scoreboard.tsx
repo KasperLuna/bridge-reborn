@@ -103,7 +103,7 @@ export function Scoreboard({
         <button
           type="button"
           onClick={onContractClick}
-          className="rounded-2xl border border-lime/30 bg-lime/10 px-3 py-2 font-display text-sm text-lime transition-colors hover:bg-lime/20"
+          className="rounded-2xl border border-lime/30 bg-lime/10 px-3 py-2 font-display text-base text-lime transition-colors hover:bg-lime/20"
         >
           {contract}
         </button>

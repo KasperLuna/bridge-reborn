@@ -42,11 +42,21 @@ export function bidValue(
   return direction === "high" ? value : -value;
 }
 
+/** Human-readable bid glyph: uptown ▲, downtown ▼. "L2C" → "▼2C". */
+export function formatCall(call: string): string {
+  if (call === "P" || call === "X" || call === "XX") return call;
+  const m = CALL_RE.exec(call);
+  if (!m) return call;
+  return `${m[1] ? "▼" : "▲"}${m[2]}${m[3]}`;
+}
+
+const CALL_RE = /^(L)?([1-7])(NT|[CDHS])$/;
+
 export function parseAuctionCall(call: string): Call {
   if (call === "P") return { kind: "pass" };
   if (call === "X") return { kind: "double" };
   if (call === "XX") return { kind: "redouble" };
-  const m = /^(L)?([1-7])(NT|[CDHS])$/.exec(call);
+  const m = CALL_RE.exec(call);
   if (!m) throw new Error(`Unknown call: ${call}`);
   return {
     kind: "bid",

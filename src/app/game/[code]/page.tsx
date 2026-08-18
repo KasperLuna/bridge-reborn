@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/Button";
 import { useGameSync } from "@/hooks/useGameSync";
 import { useRoomSync } from "@/hooks/useRoomSync";
 import { useTurnAlerts } from "@/hooks/useTurnAlerts";
+import { formatCall } from "@/lib/game/bidding";
 import { sortHand, sortHandByRank } from "@/lib/game/cards";
 import { ddOutcome } from "@/lib/game/scoring";
 import { opponentsOf, partnershipOf, seatOfUsername } from "@/lib/game/seats";
@@ -918,7 +919,7 @@ function AuctionHistoryModal({
             <li key={i} className="flex items-center justify-between text-sm">
               <span className="text-cream">{e.username}</span>
               <span
-                className={`rounded-md px-2 py-0.5 font-semibold ${
+                className={`rounded-md px-2 py-0.5 text-base font-semibold ${
                   e.call === "P"
                     ? "bg-cream/5 text-cream-dim"
                     : e.call === "X" || e.call === "XX"
@@ -926,7 +927,7 @@ function AuctionHistoryModal({
                       : "bg-lime/15 text-lime"
                 }`}
               >
-                {e.call}
+                {formatCall(e.call)}
               </span>
             </li>
           ))}

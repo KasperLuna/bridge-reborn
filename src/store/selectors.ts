@@ -130,7 +130,7 @@ export function legalBidsForMe(
 export function contractShorthand(contract: ContractRecord | null): string {
   if (!contract) return "";
   const suffix = contract.redoubled ? "XX" : contract.doubled ? "X" : "";
-  const prefix = contract.direction === "low" ? "L" : "";
+  const prefix = contract.direction === "low" ? "▼" : "▲";
   return `${prefix}${contract.level}${contract.strain}${suffix}`;
 }
 

@@ -4,6 +4,7 @@ import {
   bidValue,
   declarerUsername,
   finalContract,
+  formatCall,
   isAuctionComplete,
   legalCalls,
   lastBid,
@@ -42,6 +43,15 @@ describe("bidding", () => {
       strain: "S",
       direction: "low",
     });
+  });
+
+  it("formats calls with direction glyphs", () => {
+    expect(formatCall("1C")).toBe("▲1C");
+    expect(formatCall("L2S")).toBe("▼2S");
+    expect(formatCall("7NT")).toBe("▲7NT");
+    expect(formatCall("P")).toBe("P");
+    expect(formatCall("X")).toBe("X");
+    expect(formatCall("XX")).toBe("XX");
   });
 
   it("ranks bids by level then strain", () => {

@@ -84,15 +84,15 @@ function AuctionVisual() {
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between gap-2 rounded-lg bg-cream/5 px-2.5 py-1 text-xs">
           <span className="text-cream-dim">You</span>
-          <span className="font-semibold text-cream">1♠</span>
+          <span className="font-semibold text-cream">▲1S</span>
         </div>
         <div className="flex items-center justify-between gap-2 rounded-lg bg-cream/5 px-2.5 py-1 text-xs">
           <span className="text-cream-dim">West</span>
-          <span className="font-semibold text-cream">3NT</span>
+          <span className="font-semibold text-cream">▼2S</span>
         </div>
         <div className="flex items-center justify-between gap-2 rounded-lg bg-lime/15 px-2.5 py-1 text-xs">
           <span className="text-lime/80">Contract</span>
-          <span className="font-bold text-lime">3NT</span>
+          <span className="font-bold text-lime">▼2S</span>
         </div>
       </div>
     </div>
@@ -165,12 +165,12 @@ const STEPS: {
   },
   {
     title: "The auction",
-    body: "After the deal, players bid — level plus strain, like “3 NT”. The highest bid wins the contract, and that side must make it.",
+    body: "After the deal, players bid — level plus strain, like “▲ 3 NT” (uptown: high cards win) or “▼ 2 S” (downtown: low cards win). The final bid wins the contract, and that side must make it.",
     visual: AuctionVisual,
   },
   {
     title: "The play",
-    body: "Follow the led suit if you can. If not, play anything — a trump card beats the rest. Highest card of the led suit, or trump, wins the trick.",
+    body: "Follow the led suit if you can. If not, play anything — a trump card beats the rest. ▲ Uptown: the highest card wins each trick. ▼ Downtown: the lowest card wins instead.",
     visual: TrickVisual,
   },
   {

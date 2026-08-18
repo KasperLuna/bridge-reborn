@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Info } from "lucide-react";
 
 import type { LegalCalls } from "@/lib/game/bidding";
-import { bidValue } from "@/lib/game/bidding";
+import { bidValue, formatCall, parseAuctionCall } from "@/lib/game/bidding";
 import type { Strain } from "@/lib/game/types";
 
 import { Button } from "./ui/Button";
@@ -32,7 +31,7 @@ export function AuctionChips({ entries }: { entries: AuctionEntryView[] }) {
       {lastEntries.map((e, i) => (
         <span
           key={i}
-          className={`rounded-md px-2 py-0.5 text-sm font-semibold ${
+          className={`rounded-md px-2 py-0.5 text-base font-semibold ${
             e.call === "P"
               ? "bg-cream/5 text-cream-dim"
               : e.call === "X" || e.call === "XX"
@@ -40,7 +39,7 @@ export function AuctionChips({ entries }: { entries: AuctionEntryView[] }) {
                 : "bg-lime/15 text-lime"
           }`}
         >
-          {e.call}
+          {formatCall(e.call)}
           <span className="ml-1 max-w-16 truncate text-[10px] opacity-60">
             {e.username}
           </span>
@@ -55,7 +54,7 @@ function bidLabel(call: string): string {
   if (call === "P") return "Pass?";
   if (call === "X") return "Double?";
   if (call === "XX") return "Redouble?";
-  return `Bid ${call}?`;
+  return `Bid ${formatCall(call)}?`;
 }
 
 function bidConfirm(call: string): string {
@@ -80,6 +79,8 @@ export function AuctionPanel({
 }) {
   const [staged, setStaged] = useState<string | null>(null);
   const [low, setLow] = useState(false);
+  const stagedCall = staged !== null ? parseAuctionCall(staged) : null;
+  const stagedLevel = stagedCall?.kind === "bid" ? stagedCall.level : null;
   const locked = disabled || !myTurn;
   const selected = (call: string) =>
     staged === call
@@ -127,7 +128,7 @@ export function AuctionPanel({
       </div>
 
       {/* Direction toggle (uptown = high cards win, downtown = low cards win) */}
-      <div className="group relative flex shrink-0 items-center justify-center gap-1.5 self-center">
+      <div className="flex shrink-0 items-center justify-center gap-1.5 self-center">
         <div className="flex items-center gap-1 rounded-full border border-cream/10 bg-ink/40 p-0.5">
           {(["high", "low"] as const).map((d) => {
             const active = (d === "low") === low;
@@ -143,25 +144,16 @@ export function AuctionPanel({
                     : "text-cream-dim/70 hover:text-cream"
                 }`}
               >
-                {d}
+                {d === "high" ? "▲ Uptown" : "▼ Downtown"}
               </button>
             );
           })}
         </div>
-        <button
-          type="button"
-          aria-label="What do High and Low mean?"
-          title="Uptown vs downtown rules"
-          className="grid h-5 w-5 place-items-center rounded-full text-cream-dim/50 transition-colors hover:text-lime focus:text-lime focus:outline-none"
-        >
-          <Info className="h-3.5 w-3.5" />
-        </button>
-        <div className="pointer-events-none absolute top-full z-10 mt-1 hidden w-60 rounded-xl border border-cream/10 bg-ink/95 p-2.5 text-xs leading-relaxed text-cream-dim shadow-xl group-hover:block group-focus-within:block">
-          <span className="font-semibold text-cream">Uptown (High)</span> — the
-          highest card wins each trick. <span className="font-semibold text-cream">Downtown
-          (Low)</span> — the lowest card wins, and you lead your smallest card.
-          Applies for the whole hand.
-        </div>
+        <p className="mt-1 text-center text-[11px] text-cream-dim/70">
+          {low
+            ? "▼ Downtown — low cards win; smaller bid outranks"
+            : "▲ Uptown — high cards win; bigger bid outranks"}
+        </p>
       </div>
 
       {/* Bid grid */}
@@ -180,11 +172,11 @@ export function AuctionPanel({
                 type="button"
                 disabled={locked || !allowed}
                 onClick={() => setStaged((cur) => (cur === call ? null : call))}
-                className={`min-h-8 rounded-lg border text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${selected(
+                className={`min-h-8 rounded-lg border text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${selected(
                   call,
                 )}`}
               >
-                {call}
+                {formatCall(call)}
               </button>
             );
           }),
@@ -192,22 +184,29 @@ export function AuctionPanel({
       </div>
 
       {/* Confirm row: always reserved so staging never shifts the panel. */}
-      <div className="flex h-11 shrink-0 items-center justify-center gap-2">
+      <div className="flex h-14 shrink-0 flex-col items-center justify-center gap-1">
         {staged && (
           <>
-            <span className="text-sm text-cream">{bidLabel(staged)}</span>
-            <Button
-              disabled={disabled}
-              onClick={() => {
-                setStaged(null);
-                onCall(staged);
-              }}
-            >
-              {bidConfirm(staged)}
-            </Button>
-            <Button variant="ghost" onClick={() => setStaged(null)}>
-              Cancel
-            </Button>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-base text-cream">{bidLabel(staged)}</span>
+              <Button
+                disabled={disabled}
+                onClick={() => {
+                  setStaged(null);
+                  onCall(staged);
+                }}
+              >
+                {bidConfirm(staged)}
+              </Button>
+              <Button variant="ghost" onClick={() => setStaged(null)}>
+                Cancel
+              </Button>
+            </div>
+            {stagedLevel !== null && (
+              <p className="text-xs text-cream-dim">
+                Need {stagedLevel + 6} · opponents need {8 - stagedLevel}.
+              </p>
+            )}
           </>
         )}
       </div>

@@ -10,6 +10,7 @@ import {
   useTrickCardSize,
 } from "@/components/TrickArea";
 import { Button } from "@/components/ui/Button";
+import { formatCall } from "@/lib/game/bidding";
 import { fetchGameBundle, type GameBundle } from "@/lib/gameBundle";
 import { partnershipOf, seatOfUsername } from "@/lib/game/seats";
 import type { Seat } from "@/lib/game/types";
@@ -392,7 +393,7 @@ function AuctionStrip({
         {entries.map((e, i) => (
           <span
             key={i}
-            className={`rounded-md px-2 py-0.5 text-sm font-semibold ${
+            className={`rounded-md px-2 py-0.5 text-base font-semibold ${
               e.call === "P"
                 ? "bg-cream/5 text-cream-dim"
                 : e.call === "X" || e.call === "XX"
@@ -400,7 +401,7 @@ function AuctionStrip({
                   : "bg-lime/15 text-lime"
             }`}
           >
-            {e.call}
+            {formatCall(e.call)}
             <span className="ml-1 max-w-16 truncate text-[10px] opacity-60">
               {e.username}
             </span>
