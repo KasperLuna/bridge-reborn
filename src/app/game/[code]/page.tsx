@@ -1036,7 +1036,7 @@ function HandOverOverlay({
           </>
         ) : (
           <>
-            {winnerSide ? (
+            {endReason === "conceded" || endReason === "left" ? (
               <>
                 <p className="text-xs tracking-[0.3em] text-lime/70 uppercase">
                   Game over
@@ -1172,6 +1172,7 @@ function DdVerdictLine({
       className={`mt-3 text-xs tracking-[0.25em] uppercase ${
         outcome.upset ? "font-bold text-danger" : "text-cream-dim/70"
       }`}
+      title="Double-dummy result: computed with all four hands visible, assuming perfect play on both sides. It is the maximum tricks the declaring side can take on the contract strain, regardless of how the hand was actually played."
     >
       {outcome.upset ? "Upset! " : ""}
       Double-dummy: {maxTricks} tricks

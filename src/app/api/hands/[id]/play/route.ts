@@ -14,7 +14,7 @@ import {
 import type { Seat } from "@/lib/game/types";
 import { isHandOver, trickWinner } from "@/lib/game/trick";
 import type { TrickPlay } from "@/lib/game/trick";
-import type { Partnership } from "@/lib/game/types";
+import type { DdResult, Partnership } from "@/lib/game/types";
 import { resolveRuleset } from "@/lib/rulesets";
 import type {
   ContractRecord,
@@ -286,6 +286,28 @@ export async function POST(
 
       const fresh = await pb.collection("hands").getOne<Hand>(handId);
       if (!fresh.ended_at) {
+        // Solve first so ended_at + dd_result land in ONE hands update. Two
+        // separate updates -> two realtime events -> client can render the
+        // hand-over overlay between them with dd_result still null (and a
+        // dropped/coalesced second event leaves it null forever).
+        let ddResult: DdResult | null = null;
+        try {
+          const maxTricks = await solveDoubleDummy(
+            hand.deal,
+            contract.strain,
+            declarerSeat!,
+          );
+          if (maxTricks !== null) {
+            ddResult = {
+              strain: contract.strain,
+              side: declarerSide,
+              maxTricks,
+            };
+          }
+        } catch {
+          // best-effort
+        }
+
         const endedAt = new Date().toISOString();
         const winnerSide =
           tricksMade >= tricksRequired
@@ -295,30 +317,10 @@ export async function POST(
           ended_at: endedAt,
           winner_side: winnerSide,
           end_reason: "completed",
+          ...(ddResult ? { dd_result: ddResult } : {}),
         });
         // Reset ready flags so players must re-ready before the next hand.
         await unreadyRoomPlayers(pb, hand.room_id);
-
-        // Best-effort double-dummy solve for the contract strain; null on
-        // solver failure leaves dd_result unset.
-        try {
-          const maxTricks = await solveDoubleDummy(
-            hand.deal,
-            contract.strain,
-            declarerSeat!,
-          );
-          if (maxTricks !== null) {
-            await pb.collection("hands").update(handId, {
-              dd_result: {
-                strain: contract.strain,
-                side: declarerSide,
-                maxTricks,
-              },
-            });
-          }
-        } catch {
-          // best-effort
-        }
       }
     }
   } catch (err) {
