@@ -1,6 +1,7 @@
 import type {
   Deal,
   DdResult,
+  Direction,
   Partnership,
   Seat,
   Strain,
@@ -92,6 +93,7 @@ export type ContractRecord = {
   declarer_seat: Seat;
   level: string;
   strain: Strain;
+  direction: Direction;
   doubled: boolean;
   redoubled: boolean;
   created: string;

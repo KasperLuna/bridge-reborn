@@ -201,6 +201,7 @@ async function setupHand() {
     declarer_seat: "N",
     level: "2",
     strain: "NT",
+    direction: "high",
     doubled: false,
     redoubled: false,
   });

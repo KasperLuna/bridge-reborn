@@ -27,7 +27,7 @@ import { useGameSync } from "@/hooks/useGameSync";
 import { useRoomSync } from "@/hooks/useRoomSync";
 import { useTurnAlerts } from "@/hooks/useTurnAlerts";
 import { sortHand, sortHandByRank } from "@/lib/game/cards";
-import { ddOutcome } from "@/lib/game/dd-solver";
+import { ddOutcome } from "@/lib/game/scoring";
 import { opponentsOf, partnershipOf, seatOfUsername } from "@/lib/game/seats";
 import type { Card, DdResult, GamePlayers, Seat } from "@/lib/game/types";
 import { resolveRuleset } from "@/lib/rulesets";
@@ -371,7 +371,7 @@ export default function GamePage() {
   const ewNeeded = declarerSide === "EW" ? tricksToMake : tricksToSet;
 
   // Who won this hand: the declarer side if they made the contract, otherwise
-  // the defending side. Drives the celebratory names on the hand-end screen.
+  // the defending side. Downtown flips card ranking only, not the target.
   const resultWinnerSide =
     result && declarerSide
       ? result.result_delta >= 0

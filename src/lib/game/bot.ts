@@ -1,10 +1,8 @@
-import { parseAuctionCall } from "./bidding";
-import { bidValue } from "./bidding";
+import { bidValue, parseAuctionCall, type AuctionEntry } from "./bidding";
 import { cardRank, cardSuit, rankIndex } from "./cards";
 import { partnershipOf } from "./seats";
 import { trickWinner, type TrickPlay } from "./trick";
-import type { AuctionEntry } from "./bidding";
-import type { Card, Partnership, Seat, Strain, Suit } from "./types";
+import type { Card, Direction, Partnership, Seat, Strain, Suit } from "./types";
 
 const HCP: Record<string, number> = { A: 4, K: 3, Q: 2, J: 1 };
 
@@ -132,19 +130,23 @@ function lowestCard(cards: Card[]): Card {
   );
 }
 
-/** Highest card of the longest suit (partner-friendly opening lead). */
-function leadCard(legal: Card[]): Card {
+function highestCard(cards: Card[]): Card {
+  return cards.reduce(
+    (best, c) =>
+      rankIndex(cardRank(c)) > rankIndex(cardRank(best)) ? c : best,
+    cards[0]!,
+  );
+}
+
+/** Opening lead: top of the longest suit (high) or bottom of it (low). */
+function leadCard(legal: Card[], low: boolean): Card {
   const len = suitLengths(legal);
   const suit = SUIT_PRIORITY.reduce(
     (best, s) => (len[s] > len[best] ? s : best),
     "C",
   );
   const cards = legal.filter((c) => cardSuit(c) === suit);
-  return cards.reduce(
-    (best, c) =>
-      rankIndex(cardRank(c)) > rankIndex(cardRank(best)) ? c : best,
-    cards[0]!,
-  );
+  return low ? lowestCard(cards) : highestCard(cards);
 }
 
 export type BotPlayArgs = {
@@ -153,6 +155,7 @@ export type BotPlayArgs = {
   mySeat: Seat;
   trump: Strain | null;
   side: Partnership;
+  direction?: Direction;
 };
 
 /** Cheapest card that wins the trick for this side, or the lowest follow. */
@@ -162,10 +165,15 @@ function lowestCardThatWins(
   mySeat: Seat,
   trump: Suit | null,
   side: Partnership,
+  direction: Direction,
 ): Card | null {
   let best: Card | null = null;
   for (const c of legal) {
-    const winner = trickWinner([...trick, { card: c, seat: mySeat }], trump);
+    const winner = trickWinner(
+      [...trick, { card: c, seat: mySeat }],
+      trump,
+      direction,
+    );
     if (partnershipOf(winner) !== side) continue;
     if (!best || rankIndex(cardRank(c)) < rankIndex(cardRank(best))) best = c;
   }
@@ -174,7 +182,8 @@ function lowestCardThatWins(
 
 /**
  * Deterministic play: when following, win the trick with the cheapest card or
- * duck with the lowest; when leading, top of the longest suit.
+ * duck with the lowest (highest in downtown, to dump a big card); when leading,
+ * top of the longest suit (bottom in downtown).
  */
 export function choosePlay({
   legal,
@@ -182,10 +191,12 @@ export function choosePlay({
   mySeat,
   trump,
   side,
+  direction = "high",
 }: BotPlayArgs): Card {
-  if (trick.length === 0) return leadCard(legal);
+  if (trick.length === 0) return leadCard(legal, direction === "low");
   const strain: Suit | null = trump === "NT" ? null : trump;
   return (
-    lowestCardThatWins(legal, trick, mySeat, strain, side) ?? lowestCard(legal)
+    lowestCardThatWins(legal, trick, mySeat, strain, side, direction) ??
+    (direction === "low" ? highestCard(legal) : lowestCard(legal))
   );
 }

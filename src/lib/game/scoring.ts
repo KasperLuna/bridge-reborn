@@ -19,7 +19,9 @@ export type ContractScore = {
   defending: number;
 };
 
-/** Full duplicate scoring per SPEC §8. */
+/** Full duplicate scoring per SPEC §8. Downtown flips card ranking (low cards
+    win), never the trick target: the bid number is books above six in both
+    directions, so scoring is identical. */
 export function scoreContract(
   contract: Contract,
   tricksMade: number,
@@ -93,4 +95,17 @@ export function scoreContract(
   const score =
     trickScore + gameBonus + slamBonus + insultBonus + overtrickScore;
   return { declaring: score, defending: 0 };
+}
+
+/** Whether the actual result contradicts the double-dummy verdict for the
+    contract (made but DD says it should fail, or set when DD says it makes). */
+export function ddOutcome(
+  dd: { maxTricks: number } | null,
+  tricksMade: number,
+  tricksRequired: number,
+): { made: boolean; ddMakes: boolean; upset: boolean } | null {
+  if (!dd) return null;
+  const made = tricksMade >= tricksRequired;
+  const ddMakes = dd.maxTricks >= tricksRequired;
+  return { made, ddMakes, upset: made !== ddMakes };
 }

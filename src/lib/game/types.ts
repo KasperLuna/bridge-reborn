@@ -24,6 +24,9 @@ export type Vulnerability = "none" | "ns" | "ew" | "both";
 
 export type OpenerRule = "twoClubHolder" | "dealer" | "leftOfDealer";
 
+/** Bid whist direction: high cards win (uptown) or low cards win (downtown). */
+export type Direction = "high" | "low";
+
 export type Deal = Record<Seat, Card[]>;
 
 /** Seat -> username, captured on a game at start time. */
@@ -31,13 +34,14 @@ export type GamePlayers = Record<Seat, string>;
 
 export type Call =
   | { kind: "pass" }
-  | { kind: "bid"; level: number; strain: Strain }
+  | { kind: "bid"; level: number; strain: Strain; direction: Direction }
   | { kind: "double" }
   | { kind: "redouble" };
 
 export type Contract = {
   level: number;
   strain: Strain;
+  direction: Direction;
   doubled: boolean;
   redoubled: boolean;
 };

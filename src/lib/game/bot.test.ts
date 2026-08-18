@@ -286,4 +286,28 @@ describe("bot play", () => {
     });
     expect(card).toBe("5H");
   });
+
+  it("downtown: ducks with the highest card to dump it", () => {
+    const card = choosePlay({
+      legal: hand(["QS", "JS", "2S", "3H"]),
+      trick: [{ card: "2S", seat: "E" }],
+      mySeat: "S",
+      trump: null,
+      side: "NS",
+      direction: "low",
+    });
+    expect(card).toBe("QS");
+  });
+
+  it("downtown: leads the bottom of the longest suit", () => {
+    const card = choosePlay({
+      legal: hand(["AS", "KS", "2H", "3H", "4H", "5H", "6D", "7D", "8C"]),
+      trick: [],
+      mySeat: "N",
+      trump: null,
+      side: "NS",
+      direction: "low",
+    });
+    expect(card).toBe("2H");
+  });
 });

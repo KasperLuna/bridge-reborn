@@ -130,7 +130,8 @@ export function legalBidsForMe(
 export function contractShorthand(contract: ContractRecord | null): string {
   if (!contract) return "";
   const suffix = contract.redoubled ? "XX" : contract.doubled ? "X" : "";
-  return `${contract.level}${contract.strain}${suffix}`;
+  const prefix = contract.direction === "low" ? "L" : "";
+  return `${prefix}${contract.level}${contract.strain}${suffix}`;
 }
 
 export const seatedPlayers = (seats: RoomSeat[]) =>

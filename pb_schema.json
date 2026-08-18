@@ -219,6 +219,18 @@
       {
         "help": "",
         "hidden": false,
+        "id": "select1000000008",
+        "maxSelect": 1,
+        "name": "direction",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "select",
+        "values": ["high", "low"]
+      },
+      {
+        "help": "",
+        "hidden": false,
         "id": "bool1000000002",
         "name": "doubled",
         "presentable": false,

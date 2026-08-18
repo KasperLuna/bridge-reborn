@@ -38,7 +38,7 @@ const BidSchema = z.object({
     .string()
     .trim()
     .toUpperCase()
-    .refine((v) => /^(P|X|XX|[1-7](NT|[CDHS]))$/.test(v), "Invalid call"),
+    .refine((v) => /^(P|X|XX|L?[1-7](NT|[CDHS]))$/.test(v), "Invalid call"),
 });
 
 export async function POST(
@@ -123,8 +123,15 @@ export async function POST(
       );
     }
     if (call.kind === "bid") {
-      const value = bidValue(call.level, call.strain);
-      if (
+      const value = bidValue(call.level, call.strain, call.direction);
+      if (call.direction === "low") {
+        if (legal.maxBidValue !== null && value >= legal.maxBidValue) {
+          return NextResponse.json(
+            { error: "Low bid must be lower than the previous low bid" },
+            { status: 409 },
+          );
+        }
+      } else if (
         !legal.canBid ||
         (legal.minBidValue !== null && value < legal.minBidValue)
       ) {
@@ -175,6 +182,7 @@ export async function POST(
             declarer_seat: declarer ?? expectedSeat,
             level: String(contract.level),
             strain: contract.strain,
+            direction: contract.direction,
             doubled: contract.doubled,
             redoubled: contract.redoubled,
           });

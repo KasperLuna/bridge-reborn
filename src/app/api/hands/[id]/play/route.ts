@@ -14,7 +14,7 @@ import {
 import type { Seat } from "@/lib/game/types";
 import { isHandOver, trickWinner } from "@/lib/game/trick";
 import type { TrickPlay } from "@/lib/game/trick";
-import type { DdResult, Partnership } from "@/lib/game/types";
+import type { DdResult, Direction, Partnership } from "@/lib/game/types";
 import { resolveRuleset } from "@/lib/rulesets";
 import type {
   ContractRecord,
@@ -93,6 +93,7 @@ export async function POST(
     } catch {
       return NextResponse.json({ error: "No contract yet" }, { status: 409 });
     }
+    const direction = (contract.direction ?? "high") as Direction;
 
     const players = gamePlayers(hand);
     const declarerSeat =
@@ -212,7 +213,7 @@ export async function POST(
         { card: body.card, seat: playerSeat },
       ];
 
-      const winner = trickWinner(allPlays, contract.strain);
+      const winner = trickWinner(allPlays, contract.strain, direction);
       await pb.collection("tricks").update(currentTrick.id, {
         winner_username: usernameForSeat(players, winner),
         winner_seat: winner,
@@ -296,6 +297,7 @@ export async function POST(
             hand.deal,
             contract.strain,
             declarerSeat!,
+            direction,
           );
           if (maxTricks !== null) {
             ddResult = {
@@ -309,10 +311,8 @@ export async function POST(
         }
 
         const endedAt = new Date().toISOString();
-        const winnerSide =
-          tricksMade >= tricksRequired
-            ? declarerSide
-            : opponentsOf(declarerSide);
+        const made = tricksMade >= tricksRequired;
+        const winnerSide = made ? declarerSide : opponentsOf(declarerSide);
         await pb.collection("hands").update(handId, {
           ended_at: endedAt,
           winner_side: winnerSide,

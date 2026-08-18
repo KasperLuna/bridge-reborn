@@ -2,7 +2,7 @@ import type PocketBase from "pocketbase";
 
 import { chooseBid, choosePlay } from "@/lib/game/bot";
 import { partnershipOf, seatOfUsername } from "@/lib/game/seats";
-import type { Seat } from "@/lib/game/types";
+import type { Direction, Seat } from "@/lib/game/types";
 import { resolveRuleset } from "@/lib/rulesets";
 import type {
   BidRecord,
@@ -144,6 +144,7 @@ async function runOneBotTurn(pb: PocketBase, handId: string): Promise<boolean> {
     mySeat: actorSeat,
     trump: contract.strain,
     side: partnershipOf(actorSeat),
+    direction: (contract.direction ?? "high") as Direction,
   });
   await botThinkDelay(solo);
   return await applyMove(pb, handId, rec, "play", card);

@@ -1,7 +1,7 @@
 import { createRequire } from "node:module";
 
 import { leftOf } from "@/lib/game/seats";
-import type { Deal, Seat, Strain } from "@/lib/game/types";
+import type { Deal, Direction, Seat, Strain } from "@/lib/game/types";
 
 const require = createRequire(import.meta.url);
 
@@ -10,8 +10,19 @@ const INTS_PER_RESULT = 3;
 
 const SUIT_TO_DDS: Record<string, number> = { S: 0, H: 1, D: 2, C: 3 };
 const RANK_TO_DDS: Record<string, number> = {
-  "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7, "8": 8, "9": 9,
-  T: 10, J: 11, Q: 12, K: 13, A: 14,
+  "2": 2,
+  "3": 3,
+  "4": 4,
+  "5": 5,
+  "6": 6,
+  "7": 7,
+  "8": 8,
+  "9": 9,
+  T: 10,
+  J: 11,
+  Q: 12,
+  K: 13,
+  A: 14,
 };
 const COMPASS_TO_DDS: Record<Seat, number> = { N: 0, E: 1, S: 2, W: 3 };
 const SUIT_ORDER = ["S", "H", "D", "C"] as const;
@@ -21,9 +32,12 @@ type DdsModule = {
   _dds_solve_board: (
     trump: number,
     direction: number,
-    c0s: number, c0r: number,
-    c1s: number, c1r: number,
-    c2s: number, c2r: number,
+    c0s: number,
+    c0r: number,
+    c1s: number,
+    c1r: number,
+    c2s: number,
+    c2r: number,
     dealPbn: number,
     result: number,
   ) => void;
@@ -62,15 +76,51 @@ function dealToPbn(deal: Deal): string {
   return `N:${hands.join(" ")}`;
 }
 
-/** Declarer side's max tricks on the given strain via the DDS WASM solver.
-    Returns null if the solve fails for any reason. */
+/** Downtown ("low") ranks cards 2, 3, ..., K, A: the deuce beats the ace, the
+    mirror image of bridge order. Relabeling each suit's ranks with this
+    bijection (2↔A, 3↔K, 4↔Q, 5↔J, 6↔T, 7↔9, 8↔8) maps a downtown game onto an
+    order-isomorphic uptown game with identical trick outcomes, so the bridge
+    DDS can solve it directly. */
+const MIRROR_RANK: Record<string, string> = {
+  "2": "A",
+  "3": "K",
+  "4": "Q",
+  "5": "J",
+  "6": "T",
+  "7": "9",
+  "8": "8",
+  "9": "7",
+  T: "6",
+  J: "5",
+  Q: "4",
+  K: "3",
+  A: "2",
+};
+
+function mirrorDeal(deal: Deal): Deal {
+  const mirrored: Deal = { N: [], E: [], S: [], W: [] };
+  for (const seat of ["N", "E", "S", "W"] as Seat[]) {
+    mirrored[seat] = (deal[seat] ?? []).map(
+      (c) => `${MIRROR_RANK[c[0]!]!}${c[1]}`,
+    );
+  }
+  return mirrored;
+}
+
+/** Declarer side's max tricks on the given strain via the WASM bridge DDS.
+    Downtown (low cards win) is not directly solvable, but mirroring each
+    suit's ranks yields an equivalent uptown deal that is. Returns null if the
+    solve fails for any reason. */
 export async function solveDoubleDummy(
   deal: Deal,
   strain: Strain,
   declarerSeat: Seat,
-): Promise<number | null> {  try {
+  direction: Direction = "high",
+): Promise<number | null> {
+  const dealt = direction === "low" ? mirrorDeal(deal) : deal;
+  try {
     const mod = await getInstance();
-    const dealPtr = mod.allocateUTF8(dealToPbn(deal));
+    const dealPtr = mod.allocateUTF8(dealToPbn(dealt));
     const resultPtr = mod._malloc(13 * INTS_PER_RESULT * BYTES_PER_INT);
     for (let i = 0; i < 13; i++) {
       mod.setValue(resultPtr + i * BYTES_PER_INT, -1, "i32");
@@ -82,7 +132,12 @@ export async function solveDoubleDummy(
     mod._dds_solve_board(
       trump,
       COMPASS_TO_DDS[leftOf(declarerSeat)],
-      0, 0, 0, 0, 0, 0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
       dealPtr,
       resultPtr,
     );

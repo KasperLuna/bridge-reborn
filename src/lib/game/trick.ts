@@ -1,17 +1,23 @@
 import { cardRank, cardSuit, rankIndex } from "./cards";
 import { rotateFrom } from "./seats";
-import type { Card, Seat, Strain, Suit } from "./types";
+import type { Card, Direction, Seat, Strain, Suit } from "./types";
 
 export type TrickPlay = { card: Card; seat: Seat };
 
-/** Trump = contract strain, null when NT. Winner per SPEC §7.4. */
-export function trickWinner(plays: TrickPlay[], strain: Strain | null): Seat {
+/** Trump = contract strain, null when NT. Winner per SPEC §7.4. Downtown
+    ("low") inverts the rank comparison: the lowest card of the led suit (or
+    lowest trump) wins. Trump always beats the led suit in both directions. */
+export function trickWinner(
+  plays: TrickPlay[],
+  strain: Strain | null,
+  direction: Direction = "high",
+): Seat {
   const trump: Suit | null = strain === null || strain === "NT" ? null : strain;
   const ledSuit = cardSuit(plays[0]!.card);
   let best = plays[0]!;
 
   for (const play of plays.slice(1)) {
-    if (beats(play, best, trump, ledSuit)) best = play;
+    if (beats(play, best, trump, ledSuit, direction)) best = play;
   }
   return best.seat;
 }
@@ -21,6 +27,7 @@ function beats(
   current: TrickPlay,
   trump: Suit | null,
   ledSuit: Suit,
+  direction: Direction,
 ): boolean {
   const cSuit = cardSuit(candidate.card);
   const curSuit = cardSuit(current.card);
@@ -31,9 +38,9 @@ function beats(
   const cFollows = cSuit === ledSuit;
   const curFollows = curSuit === ledSuit;
   if (cFollows !== curFollows) return cFollows;
-  return (
-    rankIndex(cardRank(candidate.card)) > rankIndex(cardRank(current.card))
-  );
+  const cRank = rankIndex(cardRank(candidate.card));
+  const curRank = rankIndex(cardRank(current.card));
+  return direction === "high" ? cRank > curRank : cRank < curRank;
 }
 
 /**
@@ -62,7 +69,9 @@ export type HandEndArgs = {
   declarerTricks: number;
 };
 
-/** SPEC §7.5 — bridge plays all 13; bid whist stops when outcome is decided. */
+/** SPEC §7.5 — bridge plays all 13; bid whist stops when outcome is decided.
+    Downtown flips card ranking only (low cards win), never the trick target:
+    the bid number is books above six in both directions. */
 export function isHandOver(args: HandEndArgs): boolean {
   if (!args.endHandEarly) return args.tricksPlayed >= 13;
   const defenseTricks = args.tricksPlayed - args.declarerTricks;

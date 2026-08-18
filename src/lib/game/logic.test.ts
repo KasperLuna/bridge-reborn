@@ -28,11 +28,19 @@ describe("bidding", () => {
       kind: "bid",
       level: 1,
       strain: "C",
+      direction: "high",
     });
     expect(parseAuctionCall("7NT")).toEqual({
       kind: "bid",
       level: 7,
       strain: "NT",
+      direction: "high",
+    });
+    expect(parseAuctionCall("L2S")).toEqual({
+      kind: "bid",
+      level: 2,
+      strain: "S",
+      direction: "low",
     });
   });
 
@@ -42,6 +50,10 @@ describe("bidding", () => {
     expect(bidValue(2, "C")).toBe(21);
     expect(bidValue(7, "NT")).toBe(75);
     expect(bidValue(1, "S")).toBeLessThan(bidValue(1, "NT"));
+    // Downtown: lower level outranks; all low bids outrank a fresh track.
+    expect(bidValue(1, "C", "low")).toBe(-11);
+    expect(bidValue(2, "C", "low")).toBeLessThan(bidValue(1, "C", "low"));
+    expect(bidValue(7, "NT", "low")).toBeLessThan(bidValue(1, "C", "low"));
   });
 
   it("opens with any bid, no double before a bid", () => {
@@ -119,6 +131,7 @@ describe("bidding", () => {
     expect(finalContract(entries)).toEqual({
       level: 3,
       strain: "S",
+      direction: "high",
       doubled: false,
       redoubled: false,
     });
@@ -136,10 +149,41 @@ describe("bidding", () => {
     expect(finalContract(doubled)).toEqual({
       level: 1,
       strain: "D",
+      direction: "high",
       doubled: true,
       redoubled: false,
     });
     expect(lastBid(doubled)?.value).toBe(12);
+  });
+
+  it("tracks high and low bids on independent tracks", () => {
+    const entries = [entry("1C", "n", "NS"), entry("L2C", "e", "EW")];
+    const legal = legalCalls(entries, "NS", {
+      doubleAllowed: true,
+      redoubleAllowed: true,
+    });
+    expect(legal.minBidValue).toBe(12);
+    expect(legal.maxBidValue).toBe(-21);
+    // L2NT (-25) outranks the L2C (-21); L1C (-11) does not.
+    expect(bidValue(2, "NT", "low")).toBeLessThan(legal.maxBidValue!);
+    expect(bidValue(1, "C", "low")).toBeGreaterThanOrEqual(legal.maxBidValue!);
+  });
+
+  it("keeps the direction in the final contract", () => {
+    const entries = [
+      entry("L2S", "north", "NS"),
+      entry("L1D", "east", "EW"),
+      entry("P", "south", "NS"),
+      entry("P", "west", "EW"),
+      entry("P", "north", "NS"),
+    ];
+    expect(finalContract(entries)).toEqual({
+      level: 1,
+      strain: "D",
+      direction: "low",
+      doubled: false,
+      redoubled: false,
+    });
   });
 });
 
@@ -162,6 +206,36 @@ describe("trick", () => {
       { card: "KS", seat: "W" },
     ];
     expect(trickWinner(plays, "H")).toBe("S");
+  });
+
+  it("downtown: lowest card of the led suit wins", () => {
+    const plays: TrickPlay[] = [
+      { card: "2C", seat: "N" },
+      { card: "AC", seat: "E" },
+      { card: "AD", seat: "S" },
+      { card: "KC", seat: "W" },
+    ];
+    expect(trickWinner(plays, "NT", "low")).toBe("N");
+  });
+
+  it("downtown: trump still beats the led suit", () => {
+    const plays: TrickPlay[] = [
+      { card: "2S", seat: "N" },
+      { card: "AS", seat: "E" },
+      { card: "3H", seat: "S" },
+      { card: "KS", seat: "W" },
+    ];
+    expect(trickWinner(plays, "H", "low")).toBe("S");
+  });
+
+  it("downtown: lowest trump beats higher trump", () => {
+    const plays: TrickPlay[] = [
+      { card: "2H", seat: "N" },
+      { card: "AH", seat: "E" },
+      { card: "3H", seat: "S" },
+      { card: "KH", seat: "W" },
+    ];
+    expect(trickWinner(plays, "H", "low")).toBe("N");
   });
 
   it("enforces following suit", () => {
@@ -215,6 +289,36 @@ describe("trick", () => {
       }),
     ).toBe(false);
   });
+
+  it("downtown shares the uptown trick target (level + 6)", () => {
+    // L5S = take at least 11 books with low cards winning; a 5-bid at 5 tricks
+    // is nowhere near made, and the hand only ends at 11 or when the defense
+    // has 3.
+    expect(
+      isHandOver({
+        endHandEarly: true,
+        tricksPlayed: 5,
+        tricksRequired: 11,
+        declarerTricks: 5,
+      }),
+    ).toBe(false);
+    expect(
+      isHandOver({
+        endHandEarly: true,
+        tricksPlayed: 11,
+        tricksRequired: 11,
+        declarerTricks: 11,
+      }),
+    ).toBe(true);
+    expect(
+      isHandOver({
+        endHandEarly: true,
+        tricksPlayed: 5,
+        tricksRequired: 11,
+        declarerTricks: 2,
+      }),
+    ).toBe(true);
+  });
 });
 
 const cfg: ScoringConfig = {
@@ -239,12 +343,18 @@ const score = (
   level: number,
   strain: "C" | "D" | "H" | "S" | "NT",
   tricksMade: number,
-  opts: { doubled?: boolean; redoubled?: boolean; vuln?: Vulnerability } = {},
+  opts: {
+    doubled?: boolean;
+    redoubled?: boolean;
+    vuln?: Vulnerability;
+    direction?: "high" | "low";
+  } = {},
 ) =>
   scoreContract(
     {
       level,
       strain,
+      direction: opts.direction ?? "high",
       doubled: opts.doubled ?? false,
       redoubled: opts.redoubled ?? false,
     },
@@ -290,5 +400,14 @@ describe("scoring", () => {
     expect(isSideVulnerable("NS", "ns")).toBe(true);
     expect(isSideVulnerable("NS", "ew")).toBe(false);
     expect(isSideVulnerable("EW", "both")).toBe(true);
+  });
+
+  it("downtown scores identically to uptown (same trick target)", () => {
+    // L5S makes at 11 tricks and is set at 10, exactly like 5S uptown.
+    expect(score(2, "S", 8, { direction: "low" }).declaring).toBe(110);
+    expect(score(2, "S", 2, { direction: "low" })).toEqual({
+      declaring: -300,
+      defending: 300,
+    });
   });
 });

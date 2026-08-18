@@ -78,11 +78,17 @@ export function AuctionPanel({
   onCall: (call: string) => void;
 }) {
   const [staged, setStaged] = useState<string | null>(null);
+  const [low, setLow] = useState(false);
   const locked = disabled || !myTurn;
   const selected = (call: string) =>
     staged === call
       ? "border-lime/60 bg-lime/15 text-lime"
       : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime";
+
+  const toggle = (direction: "high" | "low") => () => {
+    setStaged(null);
+    setLow(direction === "low");
+  };
 
   return (
     <div className="mx-auto flex h-full max-h-[28rem] min-h-0 w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-cream/10 bg-felt-deep/70 p-3 backdrop-blur">
@@ -119,15 +125,36 @@ export function AuctionPanel({
         </Button>
       </div>
 
+      {/* Direction toggle (uptown = high cards win, downtown = low cards win) */}
+      <div className="flex shrink-0 gap-2">
+        <Button
+          variant="ghost"
+          className={`flex-1 ${!low ? "border-lime/60 bg-lime/15 text-lime" : ""}`}
+          disabled={locked}
+          onClick={toggle("high")}
+        >
+          High
+        </Button>
+        <Button
+          variant="ghost"
+          className={`flex-1 ${low ? "border-lime/60 bg-lime/15 text-lime" : ""}`}
+          disabled={locked}
+          onClick={toggle("low")}
+        >
+          Low
+        </Button>
+      </div>
+
       {/* Bid grid */}
       <div className="grid min-h-0 flex-1 auto-rows-[minmax(2rem,1fr)] grid-cols-5 gap-1 overflow-y-auto">
         {LEVELS.map((level) =>
           STRAINS.map((strain) => {
-            const call = `${level}${strain}`;
-            const value = bidValue(level, strain);
-            const allowed =
-              legal.canBid &&
-              (legal.minBidValue === null || value >= legal.minBidValue);
+            const call = `${low ? "L" : ""}${level}${strain}`;
+            const value = bidValue(level, strain, low ? "low" : "high");
+            const allowed = low
+              ? legal.maxBidValue === null || value < legal.maxBidValue
+              : legal.canBid &&
+                (legal.minBidValue === null || value >= legal.minBidValue);
             return (
               <button
                 key={call}

@@ -2,6 +2,7 @@ import type {
   Call,
   Contract,
   Deal,
+  Direction,
   OpenerRule,
   Partnership,
   Seat,
@@ -18,7 +19,10 @@ export type AuctionEntry = {
 export type LegalCalls = {
   canPass: boolean;
   canBid: boolean;
+  /** Lowest high bid that still outranks the last high bid (null = none yet). */
   minBidValue: number | null;
+  /** A low bid must rank strictly below this to outrank the last low bid (null = none yet). */
+  maxBidValue: number | null;
   canDouble: boolean;
   canRedouble: boolean;
 };
@@ -27,17 +31,29 @@ const STRAIN_RANK: Record<Strain, number> = { C: 1, D: 2, H: 3, S: 4, NT: 5 };
 
 export const MAX_BID_VALUE = 7 * 10 + STRAIN_RANK.NT; // 7NT = 75
 
-export function bidValue(level: number, strain: Strain): number {
-  return level * 10 + STRAIN_RANK[strain];
+/** Auction strength of a bid. High: bigger level/strain outranks. Low: the
+    negative — a smaller level/strain outranks. */
+export function bidValue(
+  level: number,
+  strain: Strain,
+  direction: Direction = "high",
+): number {
+  const value = level * 10 + STRAIN_RANK[strain];
+  return direction === "high" ? value : -value;
 }
 
 export function parseAuctionCall(call: string): Call {
   if (call === "P") return { kind: "pass" };
   if (call === "X") return { kind: "double" };
   if (call === "XX") return { kind: "redouble" };
-  const m = /^([1-7])(NT|[CDHS])$/.exec(call);
+  const m = /^(L)?([1-7])(NT|[CDHS])$/.exec(call);
   if (!m) throw new Error(`Unknown call: ${call}`);
-  return { kind: "bid", level: Number(m[1]), strain: m[2] as Strain };
+  return {
+    kind: "bid",
+    level: Number(m[2]),
+    strain: m[3] as Strain,
+    direction: m[1] ? "low" : "high",
+  };
 }
 
 /** Who opens the auction, per ruleset opener rule. */
@@ -61,7 +77,7 @@ export function resolveOpener(
   }
 }
 
-/** Last contract bid in the auction, with its 1-based index in `entries`. */
+/** Last non-pass call in the auction, with its 1-based index in `entries`. */
 export function lastBid(entries: AuctionEntry[]): {
   entry: AuctionEntry;
   index: number;
@@ -73,7 +89,24 @@ export function lastBid(entries: AuctionEntry[]): {
       return {
         entry: entries[i]!,
         index: i,
-        value: bidValue(call.level, call.strain),
+        value: bidValue(call.level, call.strain, call.direction),
+      };
+    }
+  }
+  return null;
+}
+
+/** Last bid of a given direction (uptown vs downtown tracks compete independently). */
+function lastBidOf(
+  entries: AuctionEntry[],
+  direction: Direction,
+): { index: number; value: number } | null {
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const call = parseAuctionCall(entries[i]!.call);
+    if (call.kind === "bid" && call.direction === direction) {
+      return {
+        index: i,
+        value: bidValue(call.level, call.strain, call.direction),
       };
     }
   }
@@ -87,9 +120,12 @@ export function legalCalls(
 ): LegalCalls {
   const last = lastBid(entries);
   const lastEntry = entries.at(-1);
+  const lastHigh = lastBidOf(entries, "high");
+  const lastLow = lastBidOf(entries, "low");
 
   const canPass = true;
-  const minBidValue = last ? last.value + 1 : null;
+  const minBidValue = lastHigh ? lastHigh.value + 1 : null;
+  const maxBidValue = lastLow ? lastLow.value : null;
   const canBid = minBidValue === null || minBidValue <= MAX_BID_VALUE;
 
   // Double: opponent of last bidder, and not yet doubled/redoubled since that bid.
@@ -109,7 +145,7 @@ export function legalCalls(
     canRedouble = true;
   }
 
-  return { canPass, canBid, minBidValue, canDouble, canRedouble };
+  return { canPass, canBid, minBidValue, maxBidValue, canDouble, canRedouble };
 }
 
 /** Auction ends on 3 passes after a bid, or 4 passes with no bid (passed out). */
@@ -136,6 +172,7 @@ export function finalContract(entries: AuctionEntry[]): Contract | null {
   return {
     level: call.level,
     strain: call.strain,
+    direction: call.direction,
     doubled: after.some((e) => e.call === "X"),
     redoubled: after.some((e) => e.call === "XX"),
   };

@@ -16,11 +16,15 @@ const SUIT_GLYPH: Record<string, string> = {
   C: "♣",
 };
 
-/** "1S" → "1♠"; passes and doubles stay as-is. */
+/** "1S" → "1♠"; "L2S" → "L2♠"; passes and doubles stay as-is. */
 function bidLabel(call: string): string {
   if (call === "P" || call === "X" || call === "XX") return call;
-  const strain = call.slice(1);
-  return strain === "NT" ? call : `${call[0]}${SUIT_GLYPH[strain] ?? strain}`;
+  const low = call.startsWith("L");
+  const body = low ? call.slice(1) : call;
+  const strain = body.slice(1);
+  return strain === "NT"
+    ? call
+    : `${low ? "L" : ""}${body[0]}${SUIT_GLYPH[strain] ?? strain}`;
 }
 
 /** "AS" → "♠A" (suit glyph first, rank last). */
