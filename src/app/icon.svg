@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="pinstripe" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="10" y2="10" spreadMethod="repeat">
+      <stop offset="0" stop-color="#baff3d" stop-opacity="0.14" />
+      <stop offset="0.141" stop-color="#baff3d" stop-opacity="0" />
+      <stop offset="1" stop-color="#baff3d" stop-opacity="0" />
+    </linearGradient>
+    <radialGradient id="felt" cx="30%" cy="20%" r="120%">
+      <stop offset="0" stop-color="#17402b" />
+      <stop offset="0.7" stop-color="#0c1c14" />
+      <stop offset="1" stop-color="#0f2a1d" />
+    </radialGradient>
+  </defs>
+
+  <rect width="100" height="100" rx="20" fill="#0f2a1d" />
+  <rect width="100" height="100" rx="20" fill="url(#felt)" />
+  <rect width="100" height="100" rx="20" fill="url(#pinstripe)" />
+  <rect x="1.25" y="1.25" width="97.5" height="97.5" rx="18.75" fill="none" stroke="#baff3d" stroke-opacity="0.25" stroke-width="2.5" />
+
+  <g transform="translate(15.59,89.00) scale(0.06336,-0.06336)">
+    <path
+      fill="#baff3d"
+      d="M544 1231Q562 1149 608.5 1062.0Q655 975 812 832Q934 721 981.5 651.0Q1029 581 1029 496Q1029 403 964.0 339.0Q899 275 810 275Q655 275 555 465Q555 235 656.5 139.5Q758 44 933 37L940 0H148L155 37Q332 37 435.5 139.0Q539 241 539 432Q539 443 538 465Q448 275 277 275Q186 275 121.5 340.0Q57 405 57 495Q57 587 109.5 660.0Q162 733 246 801Q507 1016 544 1231Z"
+    />
+  </g>
+</svg>

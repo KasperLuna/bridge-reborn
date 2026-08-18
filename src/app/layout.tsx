@@ -15,6 +15,12 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   title: "Bridge",
   description: "Real-time Bridge & Bid Whist, played in the browser.",
+  applicationName: "Bridge",
+  appleWebApp: {
+    capable: true,
+    title: "Bridge",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
