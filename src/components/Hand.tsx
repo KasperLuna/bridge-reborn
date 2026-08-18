@@ -141,31 +141,19 @@ export function Hand({
             initial={{ y: 60, opacity: 0 }}
             animate={{
               x,
-              y: isStaged ? [y, y - 5, y] : y,
+              y,
               rotate: angle,
               scale: isStaged ? 1.14 : 1,
               opacity: hidden ? 0 : 1,
               zIndex: isStaged ? 70 : i,
             }}
             style={hidden ? { pointerEvents: "none" } : undefined}
-            transition={
-              isStaged
-                ? {
-                    x: { type: "spring", stiffness: 260, damping: 26, delay: settleDelay },
-                    rotate: { type: "spring", stiffness: 260, damping: 26, delay: settleDelay },
-                    scale: { type: "spring", stiffness: 260, damping: 26, delay: settleDelay },
-                    opacity: { type: "spring", stiffness: 260, damping: 26, delay: settleDelay },
-                    zIndex: { type: "spring", stiffness: 260, damping: 26, delay: settleDelay },
-                    y: {
-                      type: "tween",
-                      duration: 1.6,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: settleDelay,
-                    },
-                  }
-                : { type: "spring", stiffness: 260, damping: 26, delay: settleDelay }
-            }
+            transition={{
+              type: "spring",
+              stiffness: 260,
+              damping: 26,
+              delay: settleDelay,
+            }}
             // Hover-lift only where hover exists. On touch, a lingering hover
             // would leave a raised card covering its neighbors and steal taps.
             whileHover={
@@ -193,6 +181,20 @@ export function Hand({
                   : undefined
               }
             >
+            <motion.div
+              animate={{ y: isStaged ? [0, -5, 0] : 0 }}
+              transition={
+                isStaged
+                  ? {
+                      type: "tween",
+                      duration: 1.6,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                      delay: settleDelay,
+                    }
+                  : { type: "tween", duration: 0.3, delay: settleDelay }
+              }
+            >
               <motion.div
                 aria-hidden="true"
                 className={`card-back pointer-events-none absolute inset-0 ${
@@ -216,7 +218,8 @@ export function Hand({
                   onClick={clickable ? () => onPlay?.(card) : undefined}
                 />
               </motion.div>
-            </div>
+            </motion.div>
+          </div>
           </motion.div>
         );
       })}
