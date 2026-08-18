@@ -789,8 +789,13 @@ export default function GamePage() {
         <motion.div
           className="pointer-events-none fixed z-[80]"
           initial={{ left: playAnim.from.x, top: playAnim.from.y }}
-          animate={{ left: playAnim.to.x, top: playAnim.to.y }}
-          transition={{ duration: 0.4, ease: "easeInOut" }}
+          animate={{
+            left: playAnim.to.x,
+            top: playAnim.to.y,
+            scale: [0.7, 1.14, 1],
+            rotate: [0, 6, 0],
+          }}
+          transition={{ duration: 0.4, ease: "easeInOut", times: [0, 0.65, 1] }}
           onAnimationComplete={() => {
             if (!inFlight) finishPlay(playAnim.card, seatIdOf(playAnim.seat));
           }}

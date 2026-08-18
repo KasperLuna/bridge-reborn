@@ -72,7 +72,7 @@ export function PlayingCard({
         onClick={onClick}
         disabled={!playable || !onClick}
         aria-label={`Play ${card}`}
-        className={`${SIZES[size]} relative bg-cream p-0.5 shadow-lg transition-all ${color} ${interactive} ${dimmed ? "brightness-90 saturate-[0.35]" : ""}`}
+        className={`${SIZES[size]} relative overflow-hidden bg-cream p-0.5 shadow-lg transition-all ${color} ${interactive} ${dimmed ? "brightness-90 saturate-[0.35]" : ""}`}
       >
         <span className="absolute top-0.5 left-1 flex flex-col items-start leading-none">
           <span className="font-bold">{rank}</span>
@@ -84,7 +84,7 @@ export function PlayingCard({
         {trump && (
           <span
             aria-hidden="true"
-            className="card-shimmer pointer-events-none absolute inset-0 rounded-[inherit]"
+            className="card-shimmer pointer-events-none absolute top-0 bottom-0 left-[-50%] w-[200%]"
           />
         )}
       </button>
@@ -97,7 +97,7 @@ export function PlayingCard({
       onClick={onClick}
       disabled={!playable || !onClick}
       aria-label={`Play ${card}`}
-      className={`${SIZES[size]} relative flex flex-col justify-between bg-cream p-1 shadow-lg transition-all ${color} ${interactive} ${dimmed ? "brightness-90 saturate-[0.35]" : ""}`}
+      className={`${SIZES[size]} relative flex flex-col justify-between overflow-hidden bg-cream p-1 shadow-lg transition-all ${color} ${interactive} ${dimmed ? "brightness-90 saturate-[0.35]" : ""}`}
     >
       <span className="flex flex-col items-start pl-0.5 leading-none">
         <span className="font-bold">{rank}</span>
@@ -113,7 +113,7 @@ export function PlayingCard({
       {trump && (
         <span
           aria-hidden="true"
-          className="card-shimmer pointer-events-none absolute inset-0 rounded-[inherit]"
+          className="card-shimmer pointer-events-none absolute top-0 bottom-0 left-[-50%] w-[200%]"
         />
       )}
     </button>

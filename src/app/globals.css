@@ -63,8 +63,8 @@ body {
 }
 
 /* Moving shine sweep across trump cards so they stand out at a glance.
-   The highlight exits fully off each edge (200% -> -200%) so the loop wraps
-   invisibly instead of snapping back. */
+   The band is 200% wide and translates across; transform is compositor-only
+   so the sweep never repaints the card face. */
 .card-shimmer {
   background-image: linear-gradient(
     110deg,
@@ -74,16 +74,86 @@ body {
     rgb(255 255 255 / 55%) 54%,
     transparent 70%
   );
-  background-size: 200% 100%;
   animation: card-shimmer-sweep 2.6s ease-in-out infinite;
 }
 
 @keyframes card-shimmer-sweep {
   0% {
-    background-position: 200% 0;
+    transform: translateX(-50%);
   }
   100% {
-    background-position: -200% 0;
+    transform: translateX(50%);
+  }
+}
+
+/* Staged card: breathing lime glow so the confirm row gets the eyes.
+   Static glow on a ::before layer; only opacity animates (compositor-only). */
+.card-staged::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 26px -2px rgb(186 255 61 / 85%);
+  opacity: 0.45;
+  animation: card-staged-pulse 1.6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes card-staged-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Trump cards: soft green halo beneath the shine sweep. */
+.card-trump::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 18px -2px rgb(23 143 64 / 70%);
+  opacity: 0.4;
+  animation: card-trump-glow 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes card-trump-glow {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Your turn: faint halo breathing behind the whole hand fan. */
+.hand-turn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 1rem;
+  background: radial-gradient(
+    60% 45% at 50% 95%,
+    rgb(186 255 61 / 22%),
+    transparent 70%
+  );
+  opacity: 0.5;
+  animation: hand-turn-pulse 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes hand-turn-pulse {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.7;
   }
 }
 
