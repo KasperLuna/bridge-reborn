@@ -108,14 +108,53 @@ export async function softRemoveSeats(
       }),
     });
     await Promise.all(
-      remaining.map((s) =>
-        pb.collection("room_seats").update(s.id, { ready: false }),
-      ),
+      remaining
+        .filter((s) => !s.is_bot)
+        .map((s) =>
+          pb.collection("room_seats").update(s.id, { ready: false }),
+        ),
     );
   }
 }
 
-/** Reset every seated player's ready flag (used when a hand ends). */
+/** Delete a bot's seat record; if a hand is mid-play, drop the room back to
+    `waiting` and unready the remaining seated humans (same as a human leave). */
+export async function kickBotSeat(
+  pb: PocketBase,
+  roomId: string,
+  targetUsername: string,
+): Promise<void> {
+  const mine = await pb.collection("room_seats").getFullList<RoomSeat>({
+    filter: pb.filter(
+      "room_id = {:roomId} && username = {:username} && is_bot = true && is_spectator = false",
+      { roomId, username: targetUsername },
+    ),
+  });
+  await Promise.all(mine.map((s) => pb.collection("room_seats").delete(s.id)));
+
+  const room = await pb.collection("rooms").getOne<{ status: string }>(roomId);
+  if (room.status !== "waiting" && room.status !== "finished") {
+    await pb.collection("rooms").update(roomId, {
+      status: "waiting",
+      started_at: "",
+    });
+    const remaining = await pb.collection("room_seats").getFullList<RoomSeat>({
+      filter: pb.filter("room_id = {:roomId} && is_spectator = false", {
+        roomId,
+      }),
+    });
+    await Promise.all(
+      remaining
+        .filter((s) => !s.is_bot)
+        .map((s) =>
+          pb.collection("room_seats").update(s.id, { ready: false }),
+        ),
+    );
+  }
+}
+
+/** Reset every seated human's ready flag (used when a hand ends). Bots stay
+    ready — they have no session to toggle it. */
 export async function unreadyRoomPlayers(
   pb: PocketBase,
   roomId: string,
@@ -125,7 +164,7 @@ export async function unreadyRoomPlayers(
   });
   await Promise.all(
     seats
-      .filter((s) => !s.is_spectator && s.seat)
+      .filter((s) => !s.is_spectator && s.seat && !s.is_bot)
       .map((s) => pb.collection("room_seats").update(s.id, { ready: false })),
   );
 }

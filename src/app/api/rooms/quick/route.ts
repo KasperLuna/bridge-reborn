@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { BOT_NAMES } from "@/lib/game/bot";
 import { DEFAULT_RULESET_ID, getPreset } from "@/lib/rulesets";
 import type { Room, RoomSeat, Session } from "@/lib/types";
 import { runBotTurns } from "@/server/bots";
@@ -21,13 +22,6 @@ const QuickSchema = z.object({
   mode: z.enum(["solo", "pairs"]),
   username: z.string().trim().min(1, "Username required").max(40),
 });
-
-/** Bot usernames for solo mode (human sits North). */
-const BOT_NAMES: Record<string, string> = {
-  S: "Bot S",
-  E: "Bot E",
-  W: "Bot W",
-};
 
 export async function POST(req: Request) {
   let body: z.infer<typeof QuickSchema>;

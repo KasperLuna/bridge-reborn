@@ -10,10 +10,12 @@ import { Button } from "./ui/Button";
 
 /** Modal body for vote kick. Used standalone (game menu) or via KickPanel. */
 export function KickDialog({ onClose }: { onClose: () => void }) {
+  const room = useRoomStore((s) => s.room);
   const seats = useRoomStore((s) => s.seats);
   const kickVotes = useRoomStore((s) => s.kickVotes);
   const startKick = useRoomStore((s) => s.startKick);
   const castKickVote = useRoomStore((s) => s.castKickVote);
+  const kickBot = useRoomStore((s) => s.kickBot);
   const session = useSessionStore((s) => s.session);
 
   const [now, setNow] = useState(() => Date.now());
@@ -27,6 +29,18 @@ export function KickDialog({ onClose }: { onClose: () => void }) {
     () => seats.filter((s) => !s.is_spectator && s.seat && !s.is_bot),
     [seats],
   );
+
+  const bots = useMemo(
+    () => seats.filter((s) => !s.is_spectator && s.seat && s.is_bot),
+    [seats],
+  );
+
+  // Bot management lives in the dialog only mid-game; the lobby uses buttons
+  // under the seats instead.
+  const showBots =
+    room?.mode === "four" &&
+    session?.seat === "N" &&
+    room.status !== "waiting";
 
   const openVote = useMemo(
     () => kickVotes.find((v) => v.status === "open") ?? null,
@@ -154,6 +168,45 @@ export function KickDialog({ onClose }: { onClose: () => void }) {
                     </Button>
                   </div>
                 ))}
+            </div>
+          </>
+        )}
+
+        {showBots && (
+          <>
+            <div className="mt-4 border-t border-cream/10 pt-3">
+              <p className="text-[10px] font-semibold tracking-[0.3em] text-cream-dim/70 uppercase">
+                Bots
+              </p>
+            </div>
+            <div className="mt-2 flex flex-col gap-2">
+              {bots.length === 0 && (
+                <p className="rounded-xl bg-cream/5 p-3 text-center text-sm text-cream-dim">
+                  No bots seated.
+                </p>
+              )}
+              {bots.map((s) => (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between gap-2 rounded-xl bg-cream/5 p-3"
+                >
+                  <span className="text-sm text-cream">
+                    {s.username}
+                    <span className="ml-1 text-xs text-cream-dim">
+                      · {s.seat}
+                    </span>
+                  </span>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      void kickBot(s.username);
+                      onClose();
+                    }}
+                  >
+                    Kick
+                  </Button>
+                </div>
+              ))}
             </div>
           </>
         )}

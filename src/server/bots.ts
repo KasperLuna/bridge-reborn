@@ -25,16 +25,13 @@ import {
 
 const MAX_BOT_TURNS = 24;
 
-/** Random "thinking" delay before each solo-mode bot move, to keep the game
-    paced instead of instant. Pairs/four-mode bots stay instant. */
-const SOLO_BOT_DELAY_MIN_MS = 650;
-const SOLO_BOT_DELAY_MAX_MS = 1500;
+/** Random "thinking" delay before each bot move, to keep the game paced
+    instead of instant. */
+const BOT_DELAY_MIN_MS = 650;
+const BOT_DELAY_MAX_MS = 1500;
 
-async function botThinkDelay(solo: boolean): Promise<void> {
-  if (!solo) return;
-  const ms =
-    SOLO_BOT_DELAY_MIN_MS +
-    Math.random() * (SOLO_BOT_DELAY_MAX_MS - SOLO_BOT_DELAY_MIN_MS);
+async function botThinkDelay(): Promise<void> {
+  const ms = BOT_DELAY_MIN_MS + Math.random() * (BOT_DELAY_MAX_MS - BOT_DELAY_MIN_MS);
   await new Promise((r) => setTimeout(r, ms));
 }
 
@@ -88,8 +85,6 @@ async function runOneBotTurn(pb: PocketBase, handId: string): Promise<boolean> {
   const seatRec = (username: string, seat: Seat): RoomSeat | null =>
     seats.find((s) => s.username === username && s.seat === seat) ?? null;
 
-  const solo = room.mode === "solo";
-
   if (!contract) {
     const actorSeat = bidTurnSeat(bids, hand, ruleset);
     if (!actorSeat) return false;
@@ -108,7 +103,7 @@ async function runOneBotTurn(pb: PocketBase, handId: string): Promise<boolean> {
       canBid: legal.canBid,
       minBidValue: legal.minBidValue,
     });
-    await botThinkDelay(solo);
+    await botThinkDelay();
     return await applyMove(pb, handId, rec, "bid", call);
   }
 
@@ -146,7 +141,7 @@ async function runOneBotTurn(pb: PocketBase, handId: string): Promise<boolean> {
     side: partnershipOf(actorSeat),
     direction: (contract.direction ?? "high") as Direction,
   });
-  await botThinkDelay(solo);
+  await botThinkDelay();
   return await applyMove(pb, handId, rec, "play", card);
 }
 

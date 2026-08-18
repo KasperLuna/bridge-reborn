@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { errorResponse } from "@/server/errors";
+import { runBotTurns } from "@/server/bots";
 import {
   createHand,
   getSeatedPlayers,
@@ -64,6 +65,9 @@ export async function POST(
       status: "active",
       started_at: new Date().toISOString(),
     });
+
+    // The opener may be a bot (four-mode rooms with fill bots); let it act.
+    await runBotTurns(pb, hand.id);
 
     return NextResponse.json({ ok: true, handId: hand.id });
   } catch (err) {

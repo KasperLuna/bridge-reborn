@@ -43,6 +43,8 @@ export default function RoomPage() {
   const claim = useRoomStore((s) => s.claim);
   const leave = useRoomStore((s) => s.leave);
   const ready = useRoomStore((s) => s.ready);
+  const addBot = useRoomStore((s) => s.addBot);
+  const kickBot = useRoomStore((s) => s.kickBot);
   const changeRuleset = useRoomStore((s) => s.changeRuleset);
   const changePrivacy = useRoomStore((s) => s.changePrivacy);
   const start = useRoomStore((s) => s.start);
@@ -164,35 +166,58 @@ export default function RoomPage() {
       <div className="felt relative aspect-square w-full max-w-lg rounded-[2rem]">
         {SEATS.map((seat) => {
           const rec = seatAt(seats, seat);
+          const leaderBotControls = room?.mode === "four" && isNorth;
           return (
             <div key={seat} className={`absolute ${POS[seat]}`}>
-              {rec ? (
-                <SeatBadge
-                  seat={seat}
-                  username={rec.username}
-                  isMe={session ? rec.id === session.seatId : false}
-                  ready={rec.ready}
-                />
-              ) : session && room?.mode !== "pairs" ? (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void run(() => claim(seat))}
-                  className="flex items-center gap-2 rounded-full border border-dashed border-cream/25 px-3 py-1.5 text-sm text-cream-dim transition-colors hover:border-lime/60 hover:text-lime disabled:opacity-40"
-                >
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-ink/60 font-display text-sm font-bold">
-                    {seat}
-                  </span>
-                  Sit here
-                </button>
-              ) : (
-                <div className="flex items-center gap-2 rounded-full border border-dashed border-cream/20 px-3 py-1.5 text-sm text-cream-dim/60">
-                  <span className="grid h-7 w-7 place-items-center rounded-full bg-ink/60 font-display text-sm font-bold">
-                    {seat}
-                  </span>
-                  Open
-                </div>
-              )}
+              <div className="flex flex-col items-center gap-1">
+                {rec ? (
+                  <SeatBadge
+                    seat={seat}
+                    username={rec.username}
+                    isMe={session ? rec.id === session.seatId : false}
+                    ready={rec.ready}
+                  />
+                ) : session && room?.mode !== "pairs" ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void run(() => claim(seat))}
+                    className="flex items-center gap-2 rounded-full border border-dashed border-cream/25 px-3 py-1.5 text-sm text-cream-dim transition-colors hover:border-lime/60 hover:text-lime disabled:opacity-40"
+                  >
+                    <span className="grid h-7 w-7 place-items-center rounded-full bg-ink/60 font-display text-sm font-bold">
+                      {seat}
+                    </span>
+                    Sit here
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-full border border-dashed border-cream/20 px-3 py-1.5 text-sm text-cream-dim/60">
+                    <span className="grid h-7 w-7 place-items-center rounded-full bg-ink/60 font-display text-sm font-bold">
+                      {seat}
+                    </span>
+                    Open
+                  </div>
+                )}
+                {leaderBotControls && rec?.is_bot && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void run(() => kickBot(rec.username))}
+                    className="rounded-full border border-danger/30 bg-ink/60 px-2 py-0.5 text-xs text-danger transition-colors hover:border-danger hover:text-danger disabled:opacity-40"
+                  >
+                    Kick bot
+                  </button>
+                )}
+                {leaderBotControls && !rec && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void run(() => addBot(seat))}
+                    className="rounded-full border border-dashed border-lime/40 bg-ink/60 px-2 py-0.5 text-xs text-lime transition-colors hover:border-lime hover:text-lime disabled:opacity-40"
+                  >
+                    Add bot
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}

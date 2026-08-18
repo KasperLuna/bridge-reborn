@@ -4,6 +4,13 @@ import { partnershipOf } from "./seats";
 import { trickWinner, type TrickPlay } from "./trick";
 import type { Card, Direction, Partnership, Seat, Strain, Suit } from "./types";
 
+/** Bot usernames by seat, shared by quick-game setup and add-bot. */
+export const BOT_NAMES: Record<string, string> = {
+  S: "Bot S",
+  E: "Bot E",
+  W: "Bot W",
+};
+
 const HCP: Record<string, number> = { A: 4, K: 3, Q: 2, J: 1 };
 
 const SUIT_PRIORITY: Suit[] = ["S", "H", "D", "C"];

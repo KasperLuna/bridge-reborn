@@ -31,6 +31,8 @@ type RoomState = {
   start: () => Promise<void>;
   startKick: (targetUsername: string) => Promise<void>;
   castKickVote: (voteId: string, yes: boolean) => Promise<void>;
+  addBot: (seat?: Seat) => Promise<void>;
+  kickBot: (targetUsername: string) => Promise<void>;
 };
 
 function requireSession() {
@@ -99,6 +101,22 @@ export const useRoomStore = create<RoomState>((set) => ({
       await api.castKickVote(requireSession(), voteId, yes);
     } catch (err) {
       set({ error: err instanceof Error ? err.message : "Vote failed" });
+    }
+  },
+
+  addBot: async (seat) => {
+    try {
+      await api.addBot(requireSession(), seat);
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : "Failed to add bot" });
+    }
+  },
+
+  kickBot: async (targetUsername) => {
+    try {
+      await api.kickBot(requireSession(), targetUsername);
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : "Failed to kick bot" });
     }
   },
 }));

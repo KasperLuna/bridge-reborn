@@ -1,5 +1,5 @@
 import type { Seat } from "@/lib/game/types";
-import type { KickVote, Session } from "@/lib/types";
+import type { KickVote, RoomSeat, Session } from "@/lib/types";
 
 async function post<T>(url: string, body: unknown): Promise<T> {
   return request<T>(url, "POST", body);
@@ -127,6 +127,28 @@ export function setPrivacy(
 
 export function startGame(session: Session): Promise<{ ok: true }> {
   return post(`/api/rooms/${session.code}/start`, session);
+}
+
+export function addBot(
+  session: Session,
+  seat?: Seat,
+): Promise<{ ok: true; seat: RoomSeat }> {
+  return post(`/api/rooms/${session.code}/bots`, {
+    roomId: session.roomId,
+    seatId: session.seatId,
+    username: session.username,
+    ...(seat ? { seat } : {}),
+  });
+}
+
+export function kickBot(
+  session: Session,
+  targetUsername: string,
+): Promise<{ ok: true; kicked: string }> {
+  return post(`/api/rooms/${session.code}/bots/kick`, {
+    ...session,
+    targetUsername,
+  });
 }
 
 export function newGame(session: Session): Promise<{ ok: true }> {

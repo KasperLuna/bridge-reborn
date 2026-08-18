@@ -71,7 +71,8 @@ export async function POST(
 
     const created = await createHand(pb, room, players);
 
-    // The opener may be a bot (solo quick games); let it act immediately.
+    // The opener may be a bot (solo games or four-mode rooms with fill bots);
+    // let it act immediately.
     await runBotTurns(pb, created.id);
 
     return NextResponse.json({ ok: true, handId: created.id });
