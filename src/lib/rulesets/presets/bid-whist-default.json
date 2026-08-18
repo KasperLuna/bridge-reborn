@@ -27,6 +27,7 @@
   },
   "play": {
     "mustFollowSuit": true,
-    "endHandEarly": true
+    "endHandEarly": true,
+    "firstLead": "leftOfDeclarer"
   }
 }

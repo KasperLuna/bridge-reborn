@@ -21,6 +21,8 @@ export type Ruleset = {
   play: {
     mustFollowSuit: boolean;
     endHandEarly: boolean;
+    /** Who leads the first trick. Both presets use LHO of the declarer. */
+    firstLead: "declarer" | "leftOfDeclarer";
   };
 };
 
