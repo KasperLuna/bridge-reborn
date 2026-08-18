@@ -22,6 +22,11 @@ describe("shouldPass", () => {
     expect(shouldPass(["a", "b", "c"], 4)).toBe(true);
   });
 
+  it("lets the initiator alone kick with exactly two humans (1 other voter)", () => {
+    expect(kickThreshold(1)).toBe(1);
+    expect(shouldPass(["initiator"], 1)).toBe(true);
+  });
+
   it("fails below the threshold", () => {
     expect(shouldPass(["a"], 2)).toBe(false);
     expect(shouldPass(["a"], 3)).toBe(false);

@@ -104,7 +104,7 @@ export async function POST(
       .collection("kick_votes")
       .update<KickVote>(vote.id, { votes_yes: votesYes, votes_no: votesNo });
 
-    if (body.yes && shouldPass(updated.votes_yes, seatedHumans.length)) {
+    if (body.yes && shouldPass(updated.votes_yes, seatedHumans.length - 1)) {
       await softRemoveSeats(pb, room.id, vote.target_username);
       await pb.collection("kick_votes").update(vote.id, { status: "passed" });
       return NextResponse.json({ ok: true, kicked: vote.target_username });

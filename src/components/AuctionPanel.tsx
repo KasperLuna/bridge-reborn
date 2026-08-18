@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Info } from "lucide-react";
 
 import type { LegalCalls } from "@/lib/game/bidding";
 import { bidValue } from "@/lib/game/bidding";
@@ -126,23 +127,41 @@ export function AuctionPanel({
       </div>
 
       {/* Direction toggle (uptown = high cards win, downtown = low cards win) */}
-      <div className="flex shrink-0 gap-2">
-        <Button
-          variant="ghost"
-          className={`flex-1 ${!low ? "border-lime/60 bg-lime/15 text-lime" : ""}`}
-          disabled={locked}
-          onClick={toggle("high")}
+      <div className="group relative flex shrink-0 items-center justify-center gap-1.5 self-center">
+        <div className="flex items-center gap-1 rounded-full border border-cream/10 bg-ink/40 p-0.5">
+          {(["high", "low"] as const).map((d) => {
+            const active = (d === "low") === low;
+            return (
+              <button
+                key={d}
+                type="button"
+                disabled={locked}
+                onClick={toggle(d)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold tracking-widest uppercase transition-colors disabled:opacity-40 ${
+                  active
+                    ? "bg-lime/15 text-lime"
+                    : "text-cream-dim/70 hover:text-cream"
+                }`}
+              >
+                {d}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          type="button"
+          aria-label="What do High and Low mean?"
+          title="Uptown vs downtown rules"
+          className="grid h-5 w-5 place-items-center rounded-full text-cream-dim/50 transition-colors hover:text-lime focus:text-lime focus:outline-none"
         >
-          High
-        </Button>
-        <Button
-          variant="ghost"
-          className={`flex-1 ${low ? "border-lime/60 bg-lime/15 text-lime" : ""}`}
-          disabled={locked}
-          onClick={toggle("low")}
-        >
-          Low
-        </Button>
+          <Info className="h-3.5 w-3.5" />
+        </button>
+        <div className="pointer-events-none absolute top-full z-10 mt-1 hidden w-60 rounded-xl border border-cream/10 bg-ink/95 p-2.5 text-xs leading-relaxed text-cream-dim shadow-xl group-hover:block group-focus-within:block">
+          <span className="font-semibold text-cream">Uptown (High)</span> — the
+          highest card wins each trick. <span className="font-semibold text-cream">Downtown
+          (Low)</span> — the lowest card wins, and you lead your smallest card.
+          Applies for the whole hand.
+        </div>
       </div>
 
       {/* Bid grid */}

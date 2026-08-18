@@ -53,7 +53,8 @@ export function KickDialog({ onClose }: { onClose: () => void }) {
     [kickVotes],
   );
 
-  const threshold = kickThreshold(seatedHumans.length);
+  // Target can't vote, so the bar is majority of the other seated humans.
+  const threshold = kickThreshold(Math.max(0, seatedHumans.length - 1));
 
   const myUsername = session?.username ?? null;
   const alreadyVoted =

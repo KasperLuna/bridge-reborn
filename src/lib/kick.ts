@@ -1,9 +1,10 @@
 /** Vote window for a kick vote, in milliseconds. */
 export const KICK_VOTE_WINDOW_MS = 60000;
 
-/** Votes required to pass a kick: strict majority of seated humans. */
-export function kickThreshold(seatedHumanCount: number): number {
-  return Math.floor(seatedHumanCount / 2) + 1;
+/** Votes required to pass a kick: strict majority of the humans who may vote.
+    The target cannot vote, so callers pass the seated-human count minus one. */
+export function kickThreshold(votableHumanCount: number): number {
+  return Math.floor(votableHumanCount / 2) + 1;
 }
 
 /** True once the vote's expires_at timestamp is in the past. */

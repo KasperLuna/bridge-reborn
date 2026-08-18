@@ -103,8 +103,8 @@ export async function POST(
     });
 
     // Initiation counts as the initiator's yes; if that alone passes the
-    // strict-majority threshold, the kick lands immediately.
-    if (shouldPass(vote.votes_yes, seatedHumans.length)) {
+    // strict-majority threshold (targets can't vote), the kick lands immediately.
+    if (shouldPass(vote.votes_yes, seatedHumans.length - 1)) {
       await softRemoveSeats(pb, room.id, body.targetUsername);
       await pb.collection("kick_votes").update(vote.id, { status: "passed" });
       return NextResponse.json({ ok: true, kicked: body.targetUsername });
