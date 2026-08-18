@@ -28,6 +28,9 @@ export function Hand({
   const [wide, setWide] = useState(false);
   const [canHover, setCanHover] = useState(false);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [avail, setAvail] = useState(() =>
+    typeof window === "undefined" ? 0 : window.innerWidth - 24,
+  );
 
   // Tilt follows the cursor at most once per frame; the layout read + style
   // writes live inside the rAF so pointermoves never force per-event reflow.
@@ -72,10 +75,13 @@ export function Hand({
     mqNarrow.addEventListener("change", update);
     mqWide.addEventListener("change", update);
     mqHover.addEventListener("change", update);
+    const onResize = () => setAvail(window.innerWidth - 24);
+    window.addEventListener("resize", onResize);
     return () => {
       mqNarrow.removeEventListener("change", update);
       mqWide.removeEventListener("change", update);
       mqHover.removeEventListener("change", update);
+      window.removeEventListener("resize", onResize);
     };
   }, []);
 
@@ -86,15 +92,26 @@ export function Hand({
   const n = cards.length;
   const mid = (n - 1) / 2;
   const dense = n > 8;
-  // Narrow screens: tuck the fan together so the spread stays on screen.
-  const k = narrow ? 0.85 : 1;
-  // Larger cards spread farther apart than md so the wider faces stay readable
+  // Wider cards spread farther apart than md so the wider faces stay readable
   // in the fan.
   const kx = eff === "lg" ? 1.2 : eff === "xl" ? 1.3 : 1;
   const kd = eff === "lg" || eff === "xl" ? 1.05 : 1;
-  const step = k * kx * (dense ? 2.2 : 3.2);
-  const offset = k * kx * (dense ? 26 : 38);
-  const depth = k * kd * (dense ? 1.4 : 2.4);
+  // Desktop keeps the tuned fixed fan. Below 640px the small md cards can
+  // spread much wider, so fill the container edge-to-edge: tighter as the
+  // viewport shrinks, spread way out as it grows.
+  const step = kx * (dense ? 2.2 : 3.2);
+  const baseDepth = kd * (dense ? 1.4 : 2.4);
+  let offset = kx * (dense ? 26 : 38);
+  if (narrow && avail > 0) {
+    const fit = (avail - (dense ? 124 : 112)) / Math.max(1, n - 1);
+    offset = Math.max(dense ? 20 : 32, Math.min(dense ? 48 : 60, fit));
+  }
+  // The fan arc dips edge cards below the baseline; on the short mobile footer
+  // that lands past the viewport. Shift the whole fan up so the edge bottoms
+  // sit at the baseline. The staged-card lift is reduced by the same amount,
+  // keeping the staged card at its original resting position.
+  const maxEdge = (n - 1) / 2;
+  const dipFix = narrow ? Math.min(maxEdge * maxEdge * baseDepth, 38) : 0;
 
   const inPlay = !!onPlay;
   const anyPlayable =
@@ -108,21 +125,20 @@ export function Hand({
       } ${anyPlayable ? "hand-turn" : ""}`}
     >
       {cards.map((card, i) => {
-        const baseY = Math.pow(i - mid, 2) * depth;
+        const baseY = Math.pow(i - mid, 2) * baseDepth;
         const angle = (i - mid) * step;
         const clickable = inPlay && (playable ? playable.includes(card) : true);
         const isStaged = staged === card;
         const hidden = hiddenCards.includes(card);
         // Hovered card's immediate neighbors slide away from it, Balatro-style.
-        const neighbor =
-          hoveredIdx !== null && Math.abs(hoveredIdx - i) === 1;
+        const neighbor = hoveredIdx !== null && Math.abs(hoveredIdx - i) === 1;
         const nudgeX = neighbor ? (hoveredIdx > i ? -10 : 10) : 0;
         const nudgeY = neighbor ? 6 : 0;
         // Playable cards sit raised; staged card lifts well clear of the fan.
         const lift = clickable ? 14 : 0;
         // Keep the staged-card lift modest so on small screens it stays inside
         // the short hand container instead of rising into the confirm row.
-        const y = baseY - lift - (isStaged ? 24 : 0) + nudgeY;
+        const y = baseY - dipFix - lift - (isStaged ? 24 - dipFix : 0) + nudgeY;
         const x = (i - mid) * offset + nudgeX;
         const isTrump = trumpSuit !== null && cardSuit(card) === trumpSuit;
         const tiltable = clickable && canHover;
@@ -181,45 +197,45 @@ export function Hand({
                   : undefined
               }
             >
-            <motion.div
-              animate={{ y: isStaged ? [0, -5, 0] : 0 }}
-              transition={
-                isStaged
-                  ? {
-                      type: "tween",
-                      duration: 1.6,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                      delay: settleDelay,
-                    }
-                  : { type: "tween", duration: 0.3, delay: settleDelay }
-              }
-            >
               <motion.div
-                aria-hidden="true"
-                className={`card-back pointer-events-none absolute inset-0 ${
-                  eff === "md" ? "rounded-xl" : "rounded-2xl"
-                }`}
-                initial={{ opacity: 1 }}
-                animate={{ opacity: 0 }}
-                transition={{ duration: 0.3, delay: dealDelay }}
-              />
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.3, delay: dealDelay }}
+                animate={{ y: isStaged ? [0, -5, 0] : 0 }}
+                transition={
+                  isStaged
+                    ? {
+                        type: "tween",
+                        duration: 1.6,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: settleDelay,
+                      }
+                    : { type: "tween", duration: 0.3, delay: settleDelay }
+                }
               >
-                <PlayingCard
-                  card={card}
-                  size={eff}
-                  playable={clickable}
-                  dimmed={inPlay && !clickable}
-                  trump={isTrump}
-                  onClick={clickable ? () => onPlay?.(card) : undefined}
+                <motion.div
+                  aria-hidden="true"
+                  className={`card-back pointer-events-none absolute inset-0 ${
+                    eff === "md" ? "rounded-xl" : "rounded-2xl"
+                  }`}
+                  initial={{ opacity: 1 }}
+                  animate={{ opacity: 0 }}
+                  transition={{ duration: 0.3, delay: dealDelay }}
                 />
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.3, delay: dealDelay }}
+                >
+                  <PlayingCard
+                    card={card}
+                    size={eff}
+                    playable={clickable}
+                    dimmed={inPlay && !clickable}
+                    trump={isTrump}
+                    onClick={clickable ? () => onPlay?.(card) : undefined}
+                  />
+                </motion.div>
               </motion.div>
-            </motion.div>
-          </div>
+            </div>
           </motion.div>
         );
       })}
