@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { Deal } from "@/lib/game/types";
+import { buildShuffledDeal } from "@/lib/game/cards";
+import type { Deal, Seat, Strain } from "@/lib/game/types";
 
 import { solveDoubleDummy } from "./dd";
 
@@ -154,5 +155,25 @@ describe("solveDoubleDummy", () => {
     // tricks downtown but none uptown.
     await expect(solveDoubleDummy(deal, "S", "N", "high")).resolves.toBe(13);
     await expect(solveDoubleDummy(deal, "S", "N", "low")).resolves.toBe(11);
+  });
+
+  it("never returns a trick count outside 0..13 on random deals", async () => {
+    const strains: Strain[] = ["S", "H", "D", "C", "NT"];
+    const seats: Seat[] = ["N", "E", "S", "W"];
+    const directions = ["high", "low"] as const;
+    for (let i = 0; i < 3; i++) {
+      const deal = buildShuffledDeal();
+      for (const strain of strains) {
+        for (const seat of seats) {
+          for (const direction of directions) {
+            const r = await solveDoubleDummy(deal, strain, seat, direction);
+            expect(
+              r === null || (r >= 0 && r <= 13),
+              `${JSON.stringify(deal)} ${strain} ${seat} ${direction} -> ${r}`,
+            ).toBe(true);
+          }
+        }
+      }
+    }
   });
 });

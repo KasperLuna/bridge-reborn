@@ -129,9 +129,10 @@ export async function solveDoubleDummy(
     const trump = strain === "NT" ? 4 : SUIT_TO_DDS[strain]!;
     // DDS reports tricks for the side on lead. The opening leader is the
     // declarer's LHO, so solve from their seat and invert for the declarer.
+    const leaderSeat = leftOf(declarerSeat);
     mod._dds_solve_board(
       trump,
-      COMPASS_TO_DDS[leftOf(declarerSeat)],
+      COMPASS_TO_DDS[leaderSeat],
       0,
       0,
       0,
@@ -143,16 +144,30 @@ export async function solveDoubleDummy(
     );
 
     let defendersTricks = -1;
+    let valid = true;
+    const leaderCards = new Set(
+      (dealt[leaderSeat] ?? []).map(
+        (c) => `${RANK_TO_DDS[c[0]!]!}:${SUIT_TO_DDS[c[1]!]!}`,
+      ),
+    );
     for (let i = 0; i < 13; i++) {
       const idx = resultPtr + i * INTS_PER_RESULT * BYTES_PER_INT;
       const rank = mod.getValue(idx, "i32");
       if (rank === -1 || rank === 0) break;
+      const suit = mod.getValue(idx + BYTES_PER_INT, "i32");
       const tricks = mod.getValue(idx + 2 * BYTES_PER_INT, "i32");
+      // DDS can return corrupted rows for some deals; a lead must be a card
+      // the leader holds and the score must be a trick count.
+      if (tricks < 0 || tricks > 13 || !leaderCards.has(`${rank}:${suit}`)) {
+        valid = false;
+        break;
+      }
       if (tricks > defendersTricks) defendersTricks = tricks;
     }
 
     mod._free(resultPtr);
     mod._free(dealPtr);
+    if (!valid) return null;
     return defendersTricks < 0 ? null : 13 - defendersTricks;
   } catch {
     return null;
