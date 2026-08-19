@@ -255,29 +255,31 @@ export function TrickArea({
   );
 }
 
-/** Ring that runs out over 7s while the won trick's cards are collected. */
+/** Ring that runs out over 7s while the won trick's cards are collected.
+    Kept small so it clears the nearest card edges on the tightest (sm) slot
+    geometry — top/bottom card edges sit ~16px from center. */
 function CountdownRing() {
-  const r = 16;
+  const r = 10;
   const c = 2 * Math.PI * r;
   return (
     <motion.svg
       className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
-      width={44}
-      height={44}
-      viewBox="0 0 44 44"
+      width={32}
+      height={32}
+      viewBox="0 0 32 32"
       aria-label="Clearing cards"
     >
       <circle
-        cx={22}
-        cy={22}
+        cx={16}
+        cy={16}
         r={r}
         fill="rgba(6,10,8,0.65)"
         stroke="rgba(186,255,61,0.25)"
         strokeWidth={3}
       />
       <motion.circle
-        cx={22}
-        cy={22}
+        cx={16}
+        cy={16}
         r={r}
         fill="none"
         stroke="var(--color-lime)"
@@ -287,7 +289,7 @@ function CountdownRing() {
         initial={{ strokeDashoffset: 0 }}
         animate={{ strokeDashoffset: c }}
         transition={{ duration: 7, ease: "linear" }}
-        transform="rotate(-90 22 22)"
+        transform="rotate(-90 16 16)"
       />
     </motion.svg>
   );

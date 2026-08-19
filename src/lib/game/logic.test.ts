@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AuctionEntry } from "./bidding";
 import {
+  bidAllowed,
   bidValue,
   declarerUsername,
   finalContract,
@@ -186,6 +187,34 @@ describe("bidding", () => {
     // L2NT (-25) outranks the L2C (-21); L1C (-11) does not.
     expect(bidValue(2, "NT", "low")).toBeLessThan(legal.maxBidValue!);
     expect(bidValue(1, "C", "low")).toBeGreaterThanOrEqual(legal.maxBidValue!);
+  });
+
+  it("bidAllowed mirrors the standing legality per direction", () => {
+    const open = legalCalls([], "NS", {
+      doubleAllowed: true,
+      redoubleAllowed: true,
+    });
+    expect(bidAllowed(open, 1, "C", false)).toBe(true);
+    expect(bidAllowed(open, 7, "NT", false)).toBe(true);
+    const high = legalCalls([entry("2C", "e", "EW")], "NS", {
+      doubleAllowed: true,
+      redoubleAllowed: true,
+    });
+    // Uptown must outrank 2C (21): 3C legal, 2C not.
+    expect(bidAllowed(high, 3, "C", false)).toBe(true);
+    expect(bidAllowed(high, 2, "C", false)).toBe(false);
+    // Downtown unaffected by the high track.
+    expect(bidAllowed(high, 2, "C", true)).toBe(true);
+    const low = legalCalls([entry("L2C", "e", "EW")], "NS", {
+      doubleAllowed: true,
+      redoubleAllowed: true,
+    });
+    // Downtown must rank strictly below L2C (-21): L1C (-11) doesn't, L2D (-22) does.
+    expect(bidAllowed(low, 2, "C", true)).toBe(false);
+    expect(bidAllowed(low, 1, "C", true)).toBe(false);
+    expect(bidAllowed(low, 2, "D", true)).toBe(true);
+    // A no-bid-track opening allows any low bid.
+    expect(bidAllowed(open, 1, "C", true)).toBe(true);
   });
 
   it("keeps the direction in the final contract", () => {

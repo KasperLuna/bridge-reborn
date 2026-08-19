@@ -16,6 +16,22 @@ export type AuctionEntry = {
   side: Partnership;
 };
 
+/** Whether a (level, strain) bid is legal for the standing auction. Uptown
+    (high) must outrank the last high bid; downtown (low) must rank strictly
+    below the last low bid. */
+export function bidAllowed(
+  legal: LegalCalls,
+  level: number,
+  strain: Strain,
+  low: boolean,
+): boolean {
+  const value = bidValue(level, strain, low ? "low" : "high");
+  return low
+    ? legal.maxBidValue === null || value < legal.maxBidValue
+    : legal.canBid &&
+        (legal.minBidValue === null || value >= legal.minBidValue);
+}
+
 export type LegalCalls = {
   canPass: boolean;
   canBid: boolean;

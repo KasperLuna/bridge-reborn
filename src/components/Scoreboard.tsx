@@ -34,7 +34,7 @@ function SideChip({
 }) {
   return (
     <div
-      className="flex items-center gap-1.5 rounded-2xl border bg-felt-deep/70 px-3 py-2 text-sm text-cream transition-all"
+      className="flex items-center gap-1.5 rounded-2xl border bg-felt-deep/70 px-2 py-1 text-xs text-cream transition-all sm:px-3 sm:py-2 sm:text-sm"
       style={sideStyle(progress)}
     >
       <span className="text-cream-dim">{label}</span>
@@ -90,7 +90,7 @@ export function Scoreboard({
   const trailer = sides[1];
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2 font-semibold">
+    <div className="flex items-center justify-end gap-1.5 font-semibold sm:gap-2">
       {leader && trailer && (
         <SideChip
           label={leader.label}
@@ -103,7 +103,7 @@ export function Scoreboard({
         <button
           type="button"
           onClick={onContractClick}
-          className="rounded-2xl border border-lime/30 bg-lime/10 px-3 py-2 font-display text-base text-lime transition-colors hover:bg-lime/20"
+          className="rounded-2xl border border-lime/30 bg-lime/10 px-2 py-1 font-display text-sm text-lime transition-colors hover:bg-lime/20 sm:px-3 sm:py-2 sm:text-base"
         >
           {contract}
         </button>
@@ -117,7 +117,7 @@ export function Scoreboard({
         />
       )}
       {vuln && (
-        <div className="rounded-2xl border border-cream/10 bg-felt-deep/70 px-3 py-2 text-xs text-cream-dim">
+        <div className="rounded-2xl border border-cream/10 bg-felt-deep/70 px-2 py-1 text-[10px] text-cream-dim sm:px-3 sm:py-2 sm:text-xs">
           {vuln}
         </div>
       )}

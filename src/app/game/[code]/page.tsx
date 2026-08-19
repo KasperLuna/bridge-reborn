@@ -277,9 +277,7 @@ export default function GamePage() {
 
   const [tablet, setTablet] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia(
-      "(min-width: 640px) and (max-width: 1019px)",
-    );
+    const mq = window.matchMedia("(min-width: 640px) and (max-width: 1019px)");
     const update = () => setTablet(mq.matches);
     update();
     mq.addEventListener("change", update);
@@ -361,10 +359,7 @@ export default function GamePage() {
   // Pairs bidding on mobile: only the bidding hand stays grounded; the partner
   // hand is a popover peek so the bid panel keeps the vertical room.
   const auctionActive =
-    phase === "auction" &&
-    myBidTurn &&
-    mySeats.length > 1 &&
-    !!partnerData;
+    phase === "auction" && myBidTurn && mySeats.length > 1 && !!partnerData;
 
   // The full bid panel sits in the felt center on sm+, but on phones it docks
   // in the footer (below the table) so it can't overlap the seat badges and
@@ -573,7 +568,10 @@ export default function GamePage() {
         </div>
       )}
       {primary && renderHand(primary)}
-      {mySeats.length > 1 && showPartner && partnerData && renderHand(partnerData)}
+      {mySeats.length > 1 &&
+        showPartner &&
+        partnerData &&
+        renderHand(partnerData)}
     </div>
   );
   const handsStack = buildHandsStack();
@@ -641,23 +639,25 @@ export default function GamePage() {
 
   return (
     <main className="flex h-dvh flex-col overflow-hidden">
-      <header className="flex flex-wrap items-center justify-between gap-2 p-3 sm:gap-3 sm:p-4">
+      <header className="relative flex items-center justify-between gap-2 p-3 sm:gap-3 sm:p-4">
         <div className="text-sm text-cream-dim">
           <span className="mr-2 rounded-lg bg-cream/5 px-2 py-1 font-mono tracking-widest">
             {params.code}
           </span>
           <span className="hidden sm:inline">· {ruleset.name}</span>
         </div>
-        <div className="mx-auto">
-          <Scoreboard
-            contract={contractShorthand(contract)}
-            vulnerability={"none"}
-            nsTricks={nsTricks}
-            ewTricks={ewTricks}
-            nsNeeded={nsNeeded}
-            ewNeeded={ewNeeded}
-            onContractClick={() => setShowAuction(true)}
-          />
+        <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div className="pointer-events-auto">
+            <Scoreboard
+              contract={contractShorthand(contract)}
+              vulnerability={"none"}
+              nsTricks={nsTricks}
+              ewTricks={ewTricks}
+              nsNeeded={nsNeeded}
+              ewNeeded={ewNeeded}
+              onContractClick={() => setShowAuction(true)}
+            />
+          </div>
         </div>
         <div className="relative">
           <Button
@@ -719,7 +719,7 @@ export default function GamePage() {
       <div className="flex min-h-0 w-full flex-1 flex-col lg:flex-row">
         <div
           ref={tableRef}
-          className="[container-type:size] relative flex min-h-0 w-full flex-1 items-center justify-center px-3 sm:px-4"
+          className="[container-type:size] relative flex min-h-0 w-full flex-1 items-center justify-center px-3 py-3 sm:px-4 sm:py-4"
         >
           <div
             data-play-drop
@@ -753,23 +753,18 @@ export default function GamePage() {
               );
             })}
 
-            {/* Mobile: the bid panel sits centered in the felt (between the badge
-              strips), stretching to use the play-area whitespace. */}
+            {/* The bid panel sits centered in the felt (between the badge strips). One
+              overlay across breakpoints so the panel is a single component
+              instance — staging state stays in sync while resizing. */}
             {phase === "auction" && auctionPanel && (
-              <div className="absolute inset-0 z-10 flex items-center justify-center px-3 py-14 sm:hidden">
-                <div className="flex h-full min-h-0 w-full flex-col">
-                  {auctionPanel}
-                </div>
+              <div className="absolute inset-0 z-10 flex items-center justify-center px-3 py-14">
+                {auctionPanel}
               </div>
             )}
 
             <div className="absolute inset-0 flex items-center justify-center">
               {phase === "auction" ? (
-                auctionPanel ? (
-                  <div className="hidden h-full max-h-[calc(100%-7rem)] w-full sm:flex sm:items-center sm:justify-center">
-                    {auctionPanel}
-                  </div>
-                ) : (
+                auctionPanel ? null : (
                   <div className="w-full max-w-md rounded-2xl border border-cream/10 bg-felt-deep/70 p-5 text-center backdrop-blur">
                     <div className="flex min-h-8 flex-wrap items-center justify-center gap-1.5">
                       <AuctionChips entries={auction} />
@@ -817,7 +812,6 @@ export default function GamePage() {
                 />
               )}
             </div>
-
           </div>
         </div>
 

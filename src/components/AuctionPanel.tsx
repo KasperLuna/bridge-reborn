@@ -3,7 +3,13 @@
 import { useState } from "react";
 
 import type { LegalCalls } from "@/lib/game/bidding";
-import { bidValue, formatCall, parseAuctionCall, passNeed } from "@/lib/game/bidding";
+import {
+  bidAllowed,
+  formatCall,
+  lastBid,
+  parseAuctionCall,
+  passNeed,
+} from "@/lib/game/bidding";
 import type { Partnership, Strain } from "@/lib/game/types";
 
 import { Button } from "./ui/Button";
@@ -89,16 +95,64 @@ export function AuctionPanel({
     staged === call
       ? "border-lime/60 bg-lime/15 text-lime"
       : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime";
+  // Compact on tiny screens so the action row keeps its height budget; the
+  // important prefix beats Button's fixed min-h/px at the base breakpoint.
+  const actionTile =
+    "flex-1 text-xs !px-2 !py-1 !min-h-9 sm:text-sm sm:!px-4 sm:!py-2 sm:!min-h-11";
 
   const toggle = (direction: "high" | "low") => () => {
+    const toLow = direction === "low";
+    setLow(toLow);
+    // Keep a staged bid across the flip if it stays legal; a stale staged
+    // call would silently encode the wrong direction otherwise.
+    if (staged === null) return;
+    const sc = parseAuctionCall(staged);
+    if (sc.kind === "bid") {
+      const call = `${toLow ? "L" : ""}${sc.level}${sc.strain}`;
+      if (bidAllowed(legal, sc.level, sc.strain, toLow)) {
+        setStaged(call);
+        return;
+      }
+    }
     setStaged(null);
-    setLow(direction === "low");
+  };
+
+  const allowed = (level: number, strain: Strain) =>
+    bidAllowed(legal, level, strain, low);
+  const levelAllowed = (level: number) =>
+    STRAINS.some((strain) => allowed(level, strain));
+  // Default strain on a level tap: reuse the standing bid's strain if legal,
+  // else the top-ranking legal one. Lets a jump-bidder go straight to confirm.
+  const defaultStrain = (level: number): Strain => {
+    const last = lastBid(entries);
+    if (last) {
+      const c = parseAuctionCall(last.entry.call);
+      if (
+        c.kind === "bid" &&
+        c.direction === (low ? "low" : "high") &&
+        allowed(level, c.strain)
+      ) {
+        return c.strain;
+      }
+    }
+    for (const strain of [...STRAINS].reverse()) {
+      if (allowed(level, strain)) return strain;
+    }
+    return STRAINS[0]!;
+  };
+  const stageLevel = (level: number) => {
+    if (stagedCall?.kind === "bid" && stagedCall.level === level) {
+      setStaged(null);
+      return;
+    }
+    setStaged(`${low ? "L" : ""}${level}${defaultStrain(level)}`);
   };
 
   return (
-    <div className="mx-auto flex h-full max-h-[28rem] min-h-0 w-full max-w-md flex-col gap-3 overflow-hidden rounded-2xl border border-cream/10 bg-felt-deep/70 p-3 backdrop-blur">
-      {/* History */}
-      <div className="flex min-h-8 shrink-0 flex-wrap items-center gap-1.5">
+    <div className="mx-auto flex max-h-[min(28rem,calc(100cqh-4rem))] w-full max-w-md flex-col gap-2 overflow-y-auto rounded-2xl border border-cream/10 bg-felt-deep/70 p-3 backdrop-blur">
+      {/* History: single row that scrolls sideways, so wrapping chips never
+          inflate the panel's vertical budget on narrow screens. */}
+      <div className="flex min-h-8 shrink-0 flex-nowrap items-center gap-1.5 overflow-x-auto">
         <AuctionChips entries={entries} />
       </div>
 
@@ -106,7 +160,7 @@ export function AuctionPanel({
       <div className="flex shrink-0 gap-2">
         <Button
           variant="ghost"
-          className={`flex-1 ${selected("P")}`}
+          className={`${actionTile} ${selected("P")}`}
           disabled={locked || !legal.canPass}
           onClick={() => setStaged((cur) => (cur === "P" ? null : "P"))}
         >
@@ -114,7 +168,7 @@ export function AuctionPanel({
         </Button>
         <Button
           variant="ghost"
-          className={`flex-1 ${selected("X")}`}
+          className={`${actionTile} ${selected("X")}`}
           disabled={locked || !legal.canDouble}
           onClick={() => setStaged((cur) => (cur === "X" ? null : "X"))}
         >
@@ -122,7 +176,7 @@ export function AuctionPanel({
         </Button>
         <Button
           variant="ghost"
-          className={`flex-1 ${selected("XX")}`}
+          className={`${actionTile} ${selected("XX")}`}
           disabled={locked || !legal.canRedouble}
           onClick={() => setStaged((cur) => (cur === "XX" ? null : "XX"))}
         >
@@ -159,31 +213,56 @@ export function AuctionPanel({
         </p>
       </div>
 
-      {/* Bid grid */}
-      <div className="grid min-h-0 flex-1 auto-rows-[minmax(2rem,1fr)] grid-cols-5 gap-1 overflow-y-auto">
-        {LEVELS.map((level) =>
-          STRAINS.map((strain) => {
-            const call = `${low ? "L" : ""}${level}${strain}`;
-            const value = bidValue(level, strain, low ? "low" : "high");
-            const allowed = low
-              ? legal.maxBidValue === null || value < legal.maxBidValue
-              : legal.canBid &&
-                (legal.minBidValue === null || value >= legal.minBidValue);
+      {/* Bid level, then strain: price first, preference second. Level tap
+          stages with a default strain so jump-bidders confirm in one tap.
+          This block is the only scrollable part of the panel, so on very
+          short screens the history and confirm rows never get clipped. The
+          min-h floor keeps the tiles on screen even when the panel's cap
+          shrinks the available space to near zero. */}
+      <div className="flex min-h-[4.5rem] flex-1 flex-col gap-1.5 overflow-y-auto">
+        <div className="grid shrink-0 grid-cols-7 gap-1">
+          {LEVELS.map((level) => {
+            const active =
+              stagedCall?.kind === "bid" && stagedCall.level === level;
             return (
               <button
-                key={call}
+                key={level}
                 type="button"
-                disabled={locked || !allowed}
-                onClick={() => setStaged((cur) => (cur === call ? null : call))}
-                className={`min-h-8 rounded-lg border text-base font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${selected(
-                  call,
-                )}`}
+                disabled={locked || !levelAllowed(level)}
+                onClick={() => stageLevel(level)}
+                className={`min-h-8 rounded-lg border text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+                  active
+                    ? "border-lime/60 bg-lime/15 text-lime"
+                    : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime"
+                }`}
               >
-                {formatCall(call)}
+                {level}
               </button>
             );
-          }),
-        )}
+          })}
+        </div>
+        {/* Strain row reserved (height, not content) so staging never shifts
+            the panel; level is already shown above, so bare strains suffice. */}
+        <div className="grid min-h-8 shrink-0 grid-cols-5 gap-1">
+          {stagedCall?.kind === "bid"
+            ? STRAINS.map((strain) => {
+                const call = `${low ? "L" : ""}${stagedCall.level}${strain}`;
+                return (
+                  <button
+                    key={strain}
+                    type="button"
+                    disabled={locked || !allowed(stagedCall.level, strain)}
+                    onClick={() => setStaged(call)}
+                    className={`min-h-8 rounded-lg border text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${selected(
+                      call,
+                    )}`}
+                  >
+                    {strain}
+                  </button>
+                );
+              })
+            : null}
+        </div>
       </div>
 
       {/* Confirm row: always reserved so staging never shifts the panel. */}
