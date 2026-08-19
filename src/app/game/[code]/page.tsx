@@ -67,6 +67,7 @@ export default function GamePage() {
   const router = useRouter();
 
   const session = useSessionStore((s) => s.session);
+  const loaded = useSessionStore((s) => s.loaded);
   const init = useSessionStore((s) => s.init);
   const room = useRoomStore((s) => s.room);
   const seats = useRoomStore((s) => s.seats);
@@ -127,12 +128,13 @@ export default function GamePage() {
   }, [init]);
 
   useEffect(() => {
+    if (!loaded) return;
     if (!session) {
       router.replace("/");
       return;
     }
     if (room?.status === "waiting") router.replace(`/room/${session.code}`);
-  }, [session, room?.status, router]);
+  }, [loaded, session, room?.status, router]);
 
   useEffect(() => {
     if (!onboardingSeen()) setShowOnboarding(true);

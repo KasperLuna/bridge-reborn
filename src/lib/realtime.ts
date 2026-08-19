@@ -11,6 +11,7 @@ export function subscribe<T>(
   onEvent: (e: RealtimeEvent<T>) => void,
 ): () => void {
   let unsub: Unsubscribe | null = null;
+  let disposed = false;
   void pb
     .collection(collection)
     .subscribe(
@@ -21,9 +22,11 @@ export function subscribe<T>(
       { filter },
     )
     .then((u) => {
-      unsub = u as Unsubscribe;
+      if (disposed) void (u as Unsubscribe)();
+      else unsub = u as Unsubscribe;
     });
   return () => {
+    disposed = true;
     if (unsub) void unsub();
   };
 }
@@ -42,28 +45,34 @@ export async function unsubscribeAll(collections: string[]): Promise<void> {
 type RealtimeHooks = {
   onDisconnect?: () => void;
   connect?: () => Promise<void>;
+  initConnect?: () => void;
+  reconnectAttempts?: number;
 };
 
-/** Run `cb` whenever the realtime socket reconnects. Returns a cleanup fn. */
+/**
+ * Run `cb` whenever the realtime socket reconnects. Returns a cleanup fn.
+ * The SDK only opens the EventSource via `connect()` on the first connection;
+ * reconnects bypass it and call `initConnect()` directly. Fire only when
+ * `reconnectAttempts > 0` so the first connect isn't mistaken for a reconnect.
+ */
 export function onRealtimeReconnect(cb: () => void): () => void {
   const rt = (pb as unknown as { realtime?: RealtimeHooks }).realtime;
   if (!rt) return () => {};
+  const prevInitConnect = rt.initConnect;
   const prevDisconnect = rt.onDisconnect;
-  const prevConnect = rt.connect;
+
+  rt.initConnect = function () {
+    const isReconnect = (rt.reconnectAttempts ?? 0) > 0;
+    prevInitConnect?.call(rt);
+    if (isReconnect) cb();
+  };
 
   rt.onDisconnect = () => {
     prevDisconnect?.();
   };
 
-  if (prevConnect) {
-    rt.connect = async () => {
-      await prevConnect.call(rt);
-      cb();
-    };
-  }
-
   return () => {
     rt.onDisconnect = prevDisconnect;
-    rt.connect = prevConnect;
+    rt.initConnect = prevInitConnect;
   };
 }

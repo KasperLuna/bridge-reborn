@@ -10,10 +10,10 @@ import { useRoomStore } from "@/store/room-store";
 /** Fetches room + seats and keeps them in sync via realtime. */
 export function useRoomSync(session: Session | null) {
   const [refreshKey, setRefreshKey] = useState(0);
+  const roomId = session?.roomId ?? null;
 
   useEffect(() => {
-    if (!session) return;
-    const roomId = session.roomId;
+    if (!roomId) return;
     const store = useRoomStore.getState();
     let disposed = false;
 
@@ -41,16 +41,28 @@ export function useRoomSync(session: Session | null) {
 
     void fetchAll();
 
+    const upsert = <T extends { id: string }>(
+      list: T[],
+      e: { action: string; record: T },
+    ): T[] =>
+      e.action === "delete"
+        ? list.filter((x) => x.id !== e.record.id)
+        : [...list.filter((x) => x.id !== e.record.id), e.record];
+
     const unsubs = [
       subscribe<Room>("rooms", `id = "${roomId}"`, (e) => {
         if (e.action === "delete") store.setRoom(null);
         else store.setRoom(e.record);
       }),
-      subscribe<RoomSeat>("room_seats", `room_id = "${roomId}"`, () => {
-        void fetchAll();
+      subscribe<RoomSeat>("room_seats", `room_id = "${roomId}"`, (e) => {
+        useRoomStore
+          .getState()
+          .setSeats(upsert(useRoomStore.getState().seats, e));
       }),
-      subscribe<KickVote>("kick_votes", `room_id = "${roomId}"`, () => {
-        void fetchAll();
+      subscribe<KickVote>("kick_votes", `room_id = "${roomId}"`, (e) => {
+        useRoomStore
+          .getState()
+          .setKickVotes(upsert(useRoomStore.getState().kickVotes, e));
       }),
     ];
     const offReconnect = onRealtimeReconnect(() => setRefreshKey((k) => k + 1));
@@ -60,7 +72,7 @@ export function useRoomSync(session: Session | null) {
       offReconnect();
       unsubs.forEach((u) => u());
     };
-  }, [session, refreshKey]);
+  }, [roomId, refreshKey]);
 
   return { refresh: () => setRefreshKey((k) => k + 1) };
 }

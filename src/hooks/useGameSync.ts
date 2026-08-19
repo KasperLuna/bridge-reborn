@@ -39,10 +39,11 @@ const byNum = (a: { trick_number: number }, b: { trick_number: number }) =>
 /** Fetches the current game state and keeps it in sync via realtime. */
 export function useGameSync(session: Session | null) {
   const [refreshKey, setRefreshKey] = useState(0);
+  const roomId = session?.roomId ?? null;
 
   useEffect(() => {
-    if (!session) return;
-    const roomId = session.roomId;
+    if (!roomId) return;
+    const roomIdRef = roomId;
     const gameStore = useGameStore.getState();
     const roomStore = useRoomStore.getState();
     let disposed = false;
@@ -50,12 +51,8 @@ export function useGameSync(session: Session | null) {
 
     const fetchAll = async () => {
       try {
-        const room = await pb.collection("rooms").getOne<Room>(roomId);
-        if (disposed) return;
-        roomStore.setRoom(room);
-
         const hands = await pb.collection("hands").getList<Hand>(1, 1, {
-          filter: pb.filter("room_id = {:roomId}", { roomId }),
+          filter: pb.filter("room_id = {:roomId}", { roomId: roomIdRef }),
           sort: "-created",
         });
         const hand = hands.items[0] ?? null;
@@ -107,7 +104,7 @@ export function useGameSync(session: Session | null) {
         // (Re)subscribe with the now-known ids.
         unsubs.forEach((u) => u());
         unsubs = [
-          subscribe<Room>("rooms", `id = "${roomId}"`, (e) => {
+          subscribe<Room>("rooms", `id = "${roomIdRef}"`, (e) => {
             if (e.action === "delete") roomStore.setRoom(null);
             else roomStore.setRoom(e.record);
           }),
@@ -116,7 +113,7 @@ export function useGameSync(session: Session | null) {
         if (hand) {
           const handId = hand.id;
           unsubs.push(
-            subscribe<Hand>("hands", `room_id = "${roomId}"`, (e) => {
+            subscribe<Hand>("hands", `room_id = "${roomIdRef}"`, (e) => {
               const current = useGameStore.getState().hand;
               if (!current || e.record.id !== current.id) {
                 // A new hand appeared (next game); refetch everything.
@@ -176,7 +173,7 @@ export function useGameSync(session: Session | null) {
       offReconnect();
       unsubs.forEach((u) => u());
     };
-  }, [session, refreshKey]);
+  }, [roomId, refreshKey]);
 
   return { refresh: () => setRefreshKey((k) => k + 1) };
 }
