@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { Settings } from "lucide-react";
+import { Eye, Settings } from "lucide-react";
 
 import { AuctionChips, AuctionPanel } from "@/components/AuctionPanel";
 import { Hand } from "@/components/Hand";
@@ -50,6 +50,7 @@ import {
   players,
   playTurnSeat,
   seatAt,
+  spectators,
   trickPlaysFor,
 } from "@/store/selectors";
 
@@ -102,6 +103,7 @@ export default function GamePage() {
   const [showReplay, setShowReplay] = useState(false);
   const [confirmConcede, setConfirmConcede] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [viewersOpen, setViewersOpen] = useState(false);
   const [kickOpen, setKickOpen] = useState(false);
   const [peekOther, setPeekOther] = useState(false);
   const peekRef = useRef<HTMLDivElement | null>(null);
@@ -640,14 +642,50 @@ export default function GamePage() {
       );
   }
 
+  const viewers = spectators(seats);
+
   return (
     <main className="flex h-dvh flex-col overflow-hidden">
       <header className="relative flex items-center justify-between gap-2 p-3 sm:gap-3 sm:p-4">
-        <div className="text-sm text-cream-dim">
-          <span className="mr-2 rounded-lg bg-cream/5 px-2 py-1 font-mono tracking-widest">
+        <div className="flex items-center gap-2 text-sm text-cream-dim">
+          <span className="mr-1 rounded-lg bg-cream/5 px-2 py-1 font-mono tracking-widest">
             {params.code}
           </span>
           <span className="hidden sm:inline">· {ruleset.name}</span>
+          {viewers.length > 0 && (
+            <div className="relative">
+              <button
+                type="button"
+                aria-label={`${viewers.length} spectator${viewers.length > 1 ? "s" : ""}`}
+                className="flex items-center gap-1 rounded-lg bg-cream/5 px-2 py-1 text-cream-dim transition-colors hover:text-cream"
+                onClick={() => setViewersOpen((o) => !o)}
+              >
+                <Eye className="h-3.5 w-3.5" />
+                <span className="font-mono text-xs">{viewers.length}</span>
+              </button>
+              {viewersOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-30"
+                    onClick={() => setViewersOpen(false)}
+                  />
+                  <div className="absolute top-full left-0 z-40 mt-2 w-44 rounded-2xl border border-cream/10 bg-felt-deep/95 p-2 backdrop-blur">
+                    <p className="px-2 pt-1 pb-2 text-[10px] font-semibold tracking-[0.3em] text-cream-dim/70 uppercase">
+                      Watching
+                    </p>
+                    {viewers.map((s) => (
+                      <p
+                        key={s.id}
+                        className="truncate rounded-lg px-2 py-1 text-sm text-cream"
+                      >
+                        {s.username}
+                      </p>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
         <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
           <div className="pointer-events-auto">
