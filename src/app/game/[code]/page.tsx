@@ -440,6 +440,11 @@ export default function GamePage() {
                 ? () => {}
                 : undefined
           }
+          onPlayConfirm={
+            phase === "play" && active
+              ? (c, from) => launchPlay(c, d.seat, from)
+              : undefined
+          }
         />
       </div>
     );
@@ -516,23 +521,34 @@ export default function GamePage() {
       (el) => el.offsetParent !== null,
     ) ?? null;
 
-  function confirmPlay() {
-    if (!staged) return;
-    const fromEl = visibleEl(`[data-hand-card="${staged.card}"]`);
-    const toEl = visibleEl(`[data-trick-slot="${staged.seat}"]`);
-    const from = fromEl?.getBoundingClientRect();
+  function launchPlay(card: Card, seat: Seat, from?: { x: number; y: number }) {
+    if (playAnim) return;
+    const toEl = visibleEl(`[data-trick-slot="${seat}"]`);
     const to = toEl?.getBoundingClientRect();
-    if (from && to) {
+    const origin =
+      from ??
+      (() => {
+        const r = visibleEl(
+          `[data-hand-card="${card}"]`,
+        )?.getBoundingClientRect();
+        return r ? { x: r.left, y: r.top } : null;
+      })();
+    if (origin && to) {
       setPlayAnim({
-        card: staged.card,
-        seat: staged.seat,
-        from: { x: from.left, y: from.top },
+        card,
+        seat,
+        from: origin,
         to: { x: to.left, y: to.top },
       });
       setStaged(null);
     } else {
-      finishPlay(staged.card, seatIdOf(staged.seat));
+      finishPlay(card, seatIdOf(seat));
     }
+  }
+
+  function confirmPlay() {
+    if (!staged) return;
+    launchPlay(staged.card, staged.seat);
   }
 
   function handleSpectate() {
@@ -633,6 +649,7 @@ export default function GamePage() {
       <div className="flex min-h-0 w-full flex-1 flex-col lg:flex-row">
         <div className="[container-type:size] relative flex min-h-0 w-full flex-1 items-center justify-center px-3 sm:px-4">
           <div
+            data-play-drop
             className={`felt relative aspect-square rounded-4xl ${
               phase === "auction" && auctionPanel
                 ? "h-full w-full"

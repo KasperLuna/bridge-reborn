@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { motion } from "motion/react";
 
@@ -16,6 +17,7 @@ export function Hand({
   staged = null,
   hiddenCards = [],
   onPlay,
+  onPlayConfirm,
 }: {
   cards: Card[];
   playable?: Card[] | null;
@@ -23,11 +25,74 @@ export function Hand({
   staged?: Card | null;
   hiddenCards?: Card[];
   onPlay?: (card: Card) => void;
+  /** Drop a playable card on the table to confirm it without staging. */
+  onPlayConfirm?: (card: Card, from: { x: number; y: number }) => void;
 }) {
   const [narrow, setNarrow] = useState(false);
   const [wide, setWide] = useState(false);
   const [canHover, setCanHover] = useState(false);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [pressedIdx, setPressedIdx] = useState<number | null>(null);
+  const dragStart = useRef<{
+    card: Card;
+    x: number;
+    y: number;
+    active: boolean;
+  } | null>(null);
+  const suppressClick = useRef(false);
+  // When a drag ends, pointer-events: none is removed from the returned card
+  // under a stationary cursor, which fires a synthetic pointerenter. Timestamp
+  // the return-complete moment and ignore enters in the next half-second, so
+  // the card doesn't snap up (zIndex 60) over its right neighbors.
+  const settleAt = useRef(0);
+  const [drag, setDrag] = useState<{
+    card: Card;
+    x: number;
+    y: number;
+  } | null>(null);
+  // Card settling back into the fan after a drag: keep it out of hover/tap
+  // until the spring completes, so releasing over the hand doesn't leave it
+  // raised (zIndex 60) on top of the cards to its right.
+  const [returning, setReturning] = useState<Card | null>(null);
+  const onPlayConfirmRef = useRef(onPlayConfirm);
+  onPlayConfirmRef.current = onPlayConfirm;
+
+  // While a card is being dragged it leaves the fan (hidden + pointer-events
+  // none), so pointer capture on the card is unreliable. Drive the drag from
+  // window listeners instead: they keep firing regardless of what the card
+  // does to its own hit-testing. The listeners read the live drag from
+  // dragStart, so a release never lands on a stale closure.
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      const d = dragStart.current;
+      if (!d?.active) return;
+      setDrag({ card: d.card, x: e.clientX, y: e.clientY });
+    };
+    const onEnd = (e: PointerEvent) => {
+      const d = dragStart.current;
+      dragStart.current = null;
+      setPressedIdx(null);
+      if (!d?.active) {
+        // Plain click: never started a drag, nothing to clear.
+        return;
+      }
+      e.preventDefault();
+      suppressClick.current = true;
+      setDrag(null);
+      setReturning(d.card);
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      if (el?.closest("[data-play-drop]"))
+        onPlayConfirmRef.current?.(d.card, { x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+    };
+  }, []);
   const [avail, setAvail] = useState(() =>
     typeof window === "undefined" ? 0 : window.innerWidth - 24,
   );
@@ -61,6 +126,7 @@ export function Hand({
     e.currentTarget.style.setProperty("--rx", "0deg");
     e.currentTarget.style.setProperty("--ry", "0deg");
     setHoveredIdx(null);
+    setPressedIdx(null);
   };
   useEffect(() => {
     const mqNarrow = window.matchMedia("(max-width: 639px)");
@@ -130,6 +196,11 @@ export function Hand({
         const clickable = inPlay && (playable ? playable.includes(card) : true);
         const isStaged = staged === card;
         const hidden = hiddenCards.includes(card);
+        const isDragging = drag?.card === card;
+        const isReturning = returning === card;
+        const interactive = !isDragging && !isReturning;
+        const hoverLift = interactive && canHover && hoveredIdx === i;
+        const tapLift = interactive && pressedIdx === i;
         // Hovered card's immediate neighbors slide away from it, Balatro-style.
         const neighbor = hoveredIdx !== null && Math.abs(hoveredIdx - i) === 1;
         const nudgeX = neighbor ? (hoveredIdx > i ? -10 : 10) : 0;
@@ -146,41 +217,90 @@ export function Hand({
         const settleDelay = Math.min(i, 8) * 0.02;
         const dealDelay = Math.min(i, 6) * 0.05;
 
+        const handlePointerEnter = () => {
+          // Synthetic enter fired by removing pointer-events:none under a
+          // stationary cursor right after a drag settles. Swallow it so the
+          // card doesn't snap up over its right neighbors.
+          if (performance.now() - settleAt.current < 500) return;
+          if (tiltable) setHoveredIdx(i);
+        };
+        const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+          if (!clickable) return;
+          suppressClick.current = false;
+          setPressedIdx(i);
+          dragStart.current = {
+            card,
+            x: e.clientX,
+            y: e.clientY,
+            active: false,
+          };
+        };
+        const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+          const d = dragStart.current;
+          if (d && d.card === card && (e.buttons & 1) !== 0) {
+            if (
+              !d.active &&
+              Math.hypot(e.clientX - d.x, e.clientY - d.y) > 10
+            ) {
+              d.active = true;
+              suppressClick.current = true;
+              setHoveredIdx(null);
+              setPressedIdx(null);
+              setDrag({ card, x: e.clientX, y: e.clientY });
+              return;
+            }
+            if (d.active) return;
+          }
+          if (tiltable) onTiltMove(e);
+        };
+
         return (
           <motion.div
             key={card}
             data-hand-card={card}
             className="absolute origin-bottom touch-manipulation"
-            onPointerEnter={tiltable ? () => setHoveredIdx(i) : undefined}
-            onPointerMove={tiltable ? onTiltMove : undefined}
+            onPointerEnter={handlePointerEnter}
+            onPointerMove={handlePointerMove}
             onPointerLeave={tiltable ? resetTilt : undefined}
+            onPointerDown={handlePointerDown}
+            onClick={() => {
+              if (suppressClick.current) {
+                suppressClick.current = false;
+                return;
+              }
+              if (clickable) onPlay?.(card);
+            }}
             initial={{ y: 60, opacity: 0 }}
             animate={{
               x,
-              y,
-              rotate: angle,
-              scale: isStaged ? 1.14 : 1,
-              opacity: hidden ? 0 : 1,
-              zIndex: isStaged ? 70 : i,
+              y: hoverLift ? y - 26 : tapLift ? y - 14 : y,
+              rotate: hoverLift ? 0 : angle,
+              scale: hoverLift ? 1.12 : tapLift ? 1.06 : isStaged ? 1.14 : 1,
+              opacity: hidden || isDragging ? 0 : 1,
+              zIndex: isStaged ? 70 : hoverLift || tapLift ? 60 : i,
             }}
-            style={hidden ? { pointerEvents: "none" } : undefined}
-            transition={{
-              type: "spring",
-              stiffness: 260,
-              damping: 26,
-              delay: settleDelay,
-            }}
-            // Hover-lift only where hover exists. On touch, a lingering hover
-            // would leave a raised card covering its neighbors and steal taps.
-            whileHover={
-              clickable && canHover
-                ? { y: y - 26, scale: 1.12, rotate: 0, zIndex: 60 }
-                : undefined
+            style={
+              hidden || !interactive ? { pointerEvents: "none" } : undefined
             }
-            // On touch there's no hover, so lift the tapped card itself to reveal
-            // which one is pressed before release fires onClick.
-            whileTap={
-              clickable ? { y: y - 14, scale: 1.06, zIndex: 60 } : undefined
+            transition={
+              isDragging
+                ? { duration: 0 }
+                : hoverLift || tapLift
+                  ? { type: "tween", duration: 0.15, ease: "easeOut", delay: 0 }
+                  : {
+                      type: "tween",
+                      duration: 0.2,
+                      ease: "easeOut",
+                      delay: settleDelay,
+                    }
+            }
+            onAnimationComplete={
+              isReturning
+                ? () => {
+                    settleAt.current = performance.now();
+                    setReturning(null);
+                  }
+                : undefined
             }
           >
             <div
@@ -231,7 +351,7 @@ export function Hand({
                     playable={clickable}
                     dimmed={inPlay && !clickable}
                     trump={isTrump}
-                    onClick={clickable ? () => onPlay?.(card) : undefined}
+                    onClick={clickable ? () => {} : undefined}
                   />
                 </motion.div>
               </motion.div>
@@ -239,6 +359,24 @@ export function Hand({
           </motion.div>
         );
       })}
+      {drag &&
+        createPortal(
+          <div
+            className="pointer-events-none fixed top-0 left-0 z-[90]"
+            style={{
+              transform: `translate(${drag.x}px, ${drag.y}px) translate(-50%, -50%)`,
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0.9 }}
+              animate={{ scale: 1.08, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 500, damping: 40 }}
+            >
+              <PlayingCard card={drag.card} size={eff} playable={false} />
+            </motion.div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
