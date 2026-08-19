@@ -36,7 +36,11 @@ export function PlayingCard({
   onClick?: () => void;
 }) {
   if (faceDown) {
-    return <div className={`card-back ${SIZES[size]} shadow-lg select-none`} />;
+    return (
+      <div
+        className={`card-back ${SIZES[size]} shadow-[0_10px_24px_-6px_rgba(0,0,0,0.55)] select-none`}
+      />
+    );
   }
 
   const suit = cardSuit(card);
@@ -45,7 +49,7 @@ export function PlayingCard({
   const color = red ? "text-suit-red" : "text-suit-black";
   const interactive =
     playable && onClick
-      ? "cursor-pointer hover:shadow-lime/40 focus-visible:outline-2 focus-visible:outline-lime"
+      ? "cursor-pointer focus-visible:outline-2 focus-visible:outline-lime"
       : "cursor-default";
 
   if (size === "xs") {
@@ -72,7 +76,7 @@ export function PlayingCard({
         onClick={onClick}
         disabled={!playable || !onClick}
         aria-label={`Play ${card}`}
-        className={`${SIZES[size]} relative overflow-hidden bg-cream p-0.5 shadow-lg transition-all ${color} ${interactive} ${dimmed ? "brightness-90 saturate-[0.35]" : ""}`}
+        className={`${SIZES[size]} relative overflow-hidden bg-cream p-0.5 shadow-[0_10px_24px_-6px_rgba(0,0,0,0.55)] transition-all ${color} ${interactive} ${dimmed ? "brightness-90 saturate-[0.5]" : ""}`}
       >
         <span className="absolute top-0.5 left-1 flex flex-col items-start leading-none">
           <span className="font-bold">{rank}</span>
@@ -97,7 +101,7 @@ export function PlayingCard({
       onClick={onClick}
       disabled={!playable || !onClick}
       aria-label={`Play ${card}`}
-      className={`${SIZES[size]} relative flex flex-col justify-between overflow-hidden bg-cream p-1 shadow-lg transition-all ${color} ${interactive} ${dimmed ? "brightness-90 saturate-[0.35]" : ""}`}
+      className={`${SIZES[size]} relative flex flex-col justify-between overflow-hidden bg-cream p-1 shadow-[0_10px_24px_-6px_rgba(0,0,0,0.55)] transition-all ${color} ${interactive} ${dimmed ? "brightness-90 saturate-[0.5]" : ""}`}
     >
       <span className="flex flex-col items-start pl-0.5 leading-none">
         <span className="font-bold">{rank}</span>
