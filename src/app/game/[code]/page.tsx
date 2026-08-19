@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Eye, Settings } from "lucide-react";
@@ -99,6 +99,18 @@ export default function GamePage() {
     to: { x: number; y: number };
   } | null>(null);
   const [inFlight, setInFlight] = useState(false);
+  const [flyIn, setFlyIn] = useState<{
+    card: Card;
+    seat: Seat;
+    from: { x: number; y: number };
+    to: { x: number; y: number };
+  } | null>(null);
+  const flownPlayIds = useRef<Set<string>>(new Set());
+  const flyCardDims: Record<TrickEff, { w: number; h: number }> = {
+    sm: { w: 44, h: 64 },
+    md: { w: 64, h: 96 },
+    lg: { w: 88, h: 128 },
+  };
   const [showAuction, setShowAuction] = useState(false);
   const [showReplay, setShowReplay] = useState(false);
   const [confirmConcede, setConfirmConcede] = useState(false);
@@ -307,6 +319,49 @@ export default function GamePage() {
     : tableH && tableH < 288
       ? "sm"
       : trickCardSize;
+
+  // Opponent plays fly from their seat pill to the trick slot. Triggered in a
+  // layout effect so the flight overlay is in place before the first paint of
+  // the new card, avoiding a one-frame pop at the slot. Only plays in the
+  // current open trick fly; plays from earlier tricks (or a re-fetch) never
+  // re-animate, and each play flies at most once via its record id.
+  useLayoutEffect(() => {
+    if (!session || !hand) return;
+    const p = players(hand);
+    const open = currentTrick(tricks);
+    const cands = plays.filter(
+      (pl) =>
+        pl.username !== session.username &&
+        !flownPlayIds.current.has(pl.id) &&
+        (!open || pl.trick_id === open.id),
+    );
+    for (const c of cands) flownPlayIds.current.add(c.id);
+    const pl = cands.at(-1);
+    if (!pl) return;
+    const seat = seatOfPlay(pl, p);
+    const badge = seatBadgeRefs.current[seat];
+    const slot = visibleEl(`[data-trick-slot="${seat}"]`);
+    if (!badge || !slot) return;
+    const b = badge.getBoundingClientRect();
+    const s = slot.getBoundingClientRect();
+    const dim = flyCardDims[trickEff];
+    setFlyIn({
+      card: pl.card,
+      seat,
+      from: {
+        x: b.left + b.width / 2 - dim.w / 2,
+        y: b.top + b.height / 2 - dim.h / 2,
+      },
+      to: { x: s.left, y: s.top },
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plays, session, hand, trickEff, tricks]);
+
+  // New hand: forget prior remote plays so the next hand's cards fly again.
+  useEffect(() => {
+    flownPlayIds.current.clear();
+    setFlyIn(null);
+  }, [hand?.id]);
 
   if (!session) return null;
   if (!hand || !ruleset) {
@@ -827,6 +882,7 @@ export default function GamePage() {
                   positions={dirs}
                   size={trickEff}
                   trumpSuit={trumpSuit}
+                  flySeat={flyIn?.seat ?? null}
                   collecting={
                     !!(wonAnim && wonAnim.phase === "collect" && !openTrick)
                   }
@@ -993,6 +1049,23 @@ export default function GamePage() {
           }}
         >
           <PlayingCard card={playAnim.card} size={trickEff} />
+        </motion.div>
+      )}
+
+      {flyIn && (
+        <motion.div
+          className="pointer-events-none fixed z-[80]"
+          initial={{ left: flyIn.from.x, top: flyIn.from.y, rotate: 0 }}
+          animate={{
+            left: flyIn.to.x,
+            top: flyIn.to.y,
+            scale: [0.7, 1.14, 1],
+            rotate: [0, 6, 0],
+          }}
+          transition={{ duration: 0.4, ease: "easeInOut", times: [0, 0.65, 1] }}
+          onAnimationComplete={() => setFlyIn(null)}
+        >
+          <PlayingCard card={flyIn.card} size={trickEff} />
         </motion.div>
       )}
 

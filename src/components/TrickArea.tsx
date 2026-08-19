@@ -112,6 +112,7 @@ export function TrickArea({
   trumpSuit = null,
   size,
   toast = null,
+  flySeat = null,
 }: {
   cards: { card: string; seat: Seat }[];
   winner: Seat | null;
@@ -125,6 +126,9 @@ export function TrickArea({
   size?: TrickEff;
   /** Banner shown above the top card slot (must not overlap the cards). */
   toast?: ReactNode;
+  /** Seat whose card is mid-flight via the fly overlay; hide its slot so the
+      card doesn't render twice while it travels. */
+  flySeat?: Seat | null;
 }) {
   const bySeat = new Map(cards.map((c) => [c.seat, c.card]));
   const containerRef = useRef<HTMLDivElement>(null);
@@ -185,7 +189,7 @@ export function TrickArea({
             data-trick-slot={seat}
             className={`absolute ${DIR_POS[positions[seat]]}`}
           >
-            {card ? (
+            {card && flySeat !== seat ? (
               <motion.div
                 className={`relative ${eff.wrap} overflow-hidden ${eff.radius}`}
                 style={!target && halo ? { boxShadow: halo } : undefined}
