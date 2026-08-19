@@ -1041,6 +1041,9 @@ export default function GamePage() {
           isSeated={!session.isSpectator}
           allReady={allFourReady(seats)}
           myReady={!!seats.find((s) => s.id === session.seatId)?.ready}
+          readyCount={
+            seats.filter((s) => s.ready && !s.is_spectator).length
+          }
           onReady={(v) => void ready(v)}
           onNext={() => void startNewGame()}
           onSpectate={handleSpectate}
@@ -1114,6 +1117,7 @@ function HandOverOverlay({
   isSeated,
   allReady,
   myReady,
+  readyCount,
   onReady,
   onNext,
   onSpectate,
@@ -1140,6 +1144,7 @@ function HandOverOverlay({
   isSeated: boolean;
   allReady: boolean;
   myReady: boolean;
+  readyCount: number;
   onReady: (ready: boolean) => void;
   onNext: () => void;
   onSpectate: () => void;
@@ -1259,14 +1264,22 @@ function HandOverOverlay({
               (mode === "four" ? (
                 <div className="mt-6 flex flex-col gap-2">
                   <Button
-                    variant={myReady ? "primary" : "ghost"}
+                    variant="primary"
                     onClick={() => onReady(!myReady)}
                   >
-                    {myReady ? "Ready ✓" : "Ready for next"}
+                    {myReady
+                      ? `Ready ✓ (${readyCount}/4)`
+                      : `Ready for next (${readyCount}/4)`}
                   </Button>
                   {isNorth && (
-                    <Button disabled={!allReady} onClick={onNext}>
-                      {allReady ? "Deal next hand" : "Waiting for players"}
+                    <Button
+                      variant="ghost"
+                      disabled={!allReady}
+                      onClick={onNext}
+                    >
+                      {allReady
+                        ? "Deal next hand"
+                        : `Waiting for players (${readyCount}/4)`}
                     </Button>
                   )}
                 </div>
@@ -1276,10 +1289,24 @@ function HandOverOverlay({
                 </div>
               ))}
 
-            <div className="mt-4 flex justify-center gap-2">
+            <div className="mt-6 flex gap-2 border-t border-cream/10 pt-4">
+              <Button variant="ghost" className="flex-1" onClick={onReplay}>
+                Replay
+              </Button>
+              <Button
+                variant="ghost"
+                className="flex-1"
+                onClick={() => setInspect(true)}
+              >
+                Inspect
+              </Button>
+            </div>
+
+            <div className="mt-2 flex gap-2">
               {isSeated && !winnerSide && (
                 <Button
                   variant="ghost"
+                  className="flex-1"
                   disabled={busy}
                   onClick={() => void act(onSpectate)}
                 >
@@ -1288,24 +1315,13 @@ function HandOverOverlay({
               )}
               <Button
                 variant="danger"
+                className={isSeated && !winnerSide ? "flex-1" : "w-full"}
                 disabled={busy}
                 onClick={() => void act(onLeave)}
               >
                 Leave room
               </Button>
             </div>
-
-            <Button className="mt-2 w-full" variant="ghost" onClick={onReplay}>
-              Replay game
-            </Button>
-
-            <Button
-              className="mt-2 w-full"
-              variant="ghost"
-              onClick={() => setInspect(true)}
-            >
-              Inspect hands
-            </Button>
           </>
         )}
       </div>

@@ -229,7 +229,7 @@ export function TrickArea({
               </motion.div>
             ) : (
               <div
-                className={`${eff.wrap} ${eff.radius} border border-dashed border-cream/10`}
+                className={`${eff.wrap} ${eff.radius} border-2 border-dashed border-cream/20`}
               />
             )}
           </div>

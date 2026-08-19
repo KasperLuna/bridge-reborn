@@ -8,6 +8,7 @@ import { KickPanel } from "@/components/KickPanel";
 import { Button } from "@/components/ui/Button";
 import type { Seat } from "@/lib/game/types";
 import { pb } from "@/lib/pb";
+import { rememberName, savedName } from "@/lib/remember-name";
 import { listPresets } from "@/lib/rulesets";
 import type { Room, RoomSeat } from "@/lib/types";
 import { useRoomStore } from "@/store/room-store";
@@ -50,7 +51,7 @@ export default function RoomPage() {
   const start = useRoomStore((s) => s.start);
 
   const [busy, setBusy] = useState(false);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(savedName);
   const [joinPw, setJoinPw] = useState("");
   const [privacyPw, setPrivacyPw] = useState("");
   const [showPrivacyPw, setShowPrivacyPw] = useState(false);
@@ -113,6 +114,7 @@ export default function RoomPage() {
     setBusy(true);
     try {
       await join(code, name.trim(), joinPw.trim() || undefined);
+      rememberName(name.trim());
     } catch (err) {
       useRoomStore
         .getState()
