@@ -34,23 +34,30 @@ export function AuctionChips({ entries }: { entries: AuctionEntryView[] }) {
   }
   return (
     <>
-      {lastEntries.map((e, i) => (
-        <span
-          key={i}
-          className={`rounded-md px-2 py-0.5 text-base font-semibold ${
-            e.call === "P"
-              ? "bg-cream/5 text-cream-dim"
-              : e.call === "X" || e.call === "XX"
-                ? "bg-danger/15 text-danger"
-                : "bg-lime/15 text-lime"
-          }`}
-        >
-          {formatCall(e.call)}
-          <span className="ml-1 max-w-16 truncate text-[10px] opacity-60">
-            {e.username}
+      {lastEntries.map((e, i) => {
+        // Older calls are stale context; the last few carry the current read,
+        // so keep only them at full weight and with their usernames.
+        const recent = i >= lastEntries.length - 3;
+        return (
+          <span
+            key={i}
+            className={`rounded-md px-2 py-0.5 text-base font-semibold ${
+              e.call === "P"
+                ? "bg-cream/5 text-cream-dim"
+                : e.call === "X" || e.call === "XX"
+                  ? "bg-danger/15 text-danger"
+                  : "bg-lime/15 text-lime"
+            } ${recent ? "" : "opacity-50"}`}
+          >
+            {formatCall(e.call)}
+            {recent && (
+              <span className="ml-1 max-w-16 truncate text-[10px] opacity-60">
+                {e.username}
+              </span>
+            )}
           </span>
-        </span>
-      ))}
+        );
+      })}
     </>
   );
 }
@@ -156,6 +163,9 @@ export function AuctionPanel({
         <AuctionChips entries={entries} />
       </div>
 
+      {/* Divider: passive auction history above, active controls below. */}
+      <div className="border-t border-cream/10" />
+
       {/* Actions */}
       <div className="flex shrink-0 gap-2">
         <Button
@@ -184,84 +194,88 @@ export function AuctionPanel({
         </Button>
       </div>
 
-      {/* Direction toggle (uptown = high cards win, downtown = low cards win) */}
-      <div className="flex shrink-0 items-center justify-center gap-1.5 self-center">
-        <div className="flex items-center gap-1 rounded-full border border-cream/10 bg-ink/40 p-0.5">
-          {(["high", "low"] as const).map((d) => {
-            const active = (d === "low") === low;
-            return (
-              <button
-                key={d}
-                type="button"
-                disabled={locked}
-                onClick={toggle(d)}
-                className={`rounded-full px-3 py-1 text-xs font-semibold tracking-widest uppercase transition-colors disabled:opacity-40 ${
-                  active
-                    ? "bg-lime/15 text-lime"
-                    : "text-cream-dim/70 hover:text-cream"
-                }`}
-              >
-                {d === "high" ? "▲ Uptown" : "▼ Downtown"}
-              </button>
-            );
-          })}
+      {/* Bid input: direction + level + strain grouped as one unit, set apart
+          from the call-type buttons above. */}
+      <div className="flex min-h-0 flex-col gap-1.5 rounded-xl border border-cream/10 bg-ink/20 p-2">
+        {/* Direction toggle (uptown = high cards win, downtown = low cards win) */}
+        <div className="flex shrink-0 items-center justify-center gap-1.5 self-center">
+          <div className="flex items-center gap-1 rounded-full border border-cream/10 bg-ink/40 p-0.5">
+            {(["high", "low"] as const).map((d) => {
+              const active = (d === "low") === low;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  disabled={locked}
+                  onClick={toggle(d)}
+                  className={`rounded-full px-3 py-1 text-xs font-semibold tracking-widest uppercase transition-colors disabled:opacity-40 ${
+                    active
+                      ? "bg-lime/15 text-lime"
+                      : "text-cream-dim/70 hover:text-cream"
+                  }`}
+                >
+                  {d === "high" ? "▲ Uptown" : "▼ Downtown"}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-center text-[11px] text-cream-dim/70">
+            {low
+              ? "▼ Downtown — low cards win; smaller bid outranks"
+              : "▲ Uptown — high cards win; bigger bid outranks"}
+          </p>
         </div>
-        <p className="mt-1 text-center text-[11px] text-cream-dim/70">
-          {low
-            ? "▼ Downtown — low cards win; smaller bid outranks"
-            : "▲ Uptown — high cards win; bigger bid outranks"}
-        </p>
-      </div>
 
-      {/* Bid level, then strain: price first, preference second. Level tap
+        {/* Bid level, then strain: price first, preference second. Level tap
           stages with a default strain so jump-bidders confirm in one tap.
           This block is the only scrollable part of the panel, so on very
           short screens the history and confirm rows never get clipped. The
           min-h floor keeps the tiles on screen even when the panel's cap
           shrinks the available space to near zero. */}
-      <div className="flex min-h-[4.5rem] flex-1 flex-col gap-1.5 overflow-y-auto">
-        <div className="grid shrink-0 grid-cols-7 gap-1">
-          {LEVELS.map((level) => {
-            const active =
-              stagedCall?.kind === "bid" && stagedCall.level === level;
-            return (
-              <button
-                key={level}
-                type="button"
-                disabled={locked || !levelAllowed(level)}
-                onClick={() => stageLevel(level)}
-                className={`min-h-8 rounded-lg border text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
-                  active
-                    ? "border-lime/60 bg-lime/15 text-lime"
-                    : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime"
-                }`}
-              >
-                {level}
-              </button>
-            );
-          })}
-        </div>
-        {/* Strain row reserved (height, not content) so staging never shifts
+        <div className="flex min-h-[4.5rem] flex-1 flex-col gap-1.5 overflow-y-auto">
+          <div className="grid shrink-0 grid-cols-7 gap-1">
+            {LEVELS.map((level) => {
+              const active =
+                stagedCall?.kind === "bid" && stagedCall.level === level;
+              return (
+                <button
+                  key={level}
+                  type="button"
+                  disabled={locked || !levelAllowed(level)}
+                  onClick={() => stageLevel(level)}
+                  className={`min-h-8 rounded-lg border text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+                    active
+                      ? "border-lime/60 bg-lime/15 text-lime"
+                      : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime"
+                  }`}
+                >
+                  {level}
+                </button>
+              );
+            })}
+          </div>
+          {/* Strain row reserved (height, not content) so staging never shifts
             the panel; level is already shown above, so bare strains suffice. */}
-        <div className="grid min-h-8 shrink-0 grid-cols-5 gap-1">
-          {stagedCall?.kind === "bid"
-            ? STRAINS.map((strain) => {
-                const call = `${low ? "L" : ""}${stagedCall.level}${strain}`;
-                return (
-                  <button
-                    key={strain}
-                    type="button"
-                    disabled={locked || !allowed(stagedCall.level, strain)}
-                    onClick={() => setStaged(call)}
-                    className={`min-h-8 rounded-lg border text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${selected(
-                      call,
-                    )}`}
-                  >
-                    {strain}
-                  </button>
-                );
-              })
-            : null}
+          <div className="grid min-h-8 shrink-0 grid-cols-5 gap-1">
+            {stagedCall?.kind === "bid"
+              ? STRAINS.map((strain) => {
+                  const call = `${low ? "L" : ""}${stagedCall.level}${strain}`;
+                  return (
+                    <button
+                      key={strain}
+                      type="button"
+                      disabled={locked || !allowed(stagedCall.level, strain)}
+                      onClick={() => setStaged(call)}
+                      className={`min-h-8 rounded-lg border text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${selected(
+                        call,
+                      )}`}
+                    >
+                      {strain}
+                    </button>
+                  );
+                })
+              : null}
+          </div>
         </div>
       </div>
 
