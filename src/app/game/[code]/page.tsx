@@ -492,6 +492,7 @@ export default function GamePage() {
           trumpSuit={trumpSuit}
           staged={staged?.seat === d.seat ? staged.card : null}
           hiddenCards={d.hidden}
+          hoverable={phase === "auction" && active}
           onPlay={
             phase === "play" && active
               ? (c) => handleCardClick(c, d.seat)
@@ -1264,7 +1265,7 @@ function HandOverOverlay({
               (mode === "four" ? (
                 <div className="mt-6 flex flex-col gap-2">
                   <Button
-                    variant="primary"
+                    variant={myReady ? "ghost" : "primary"}
                     onClick={() => onReady(!myReady)}
                   >
                     {myReady
@@ -1273,7 +1274,7 @@ function HandOverOverlay({
                   </Button>
                   {isNorth && (
                     <Button
-                      variant="ghost"
+                      variant={allReady ? "primary" : "ghost"}
                       disabled={!allReady}
                       onClick={onNext}
                     >

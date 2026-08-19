@@ -131,6 +131,12 @@ body {
   }
 }
 
+/* Drag in progress: the whole fan shows the grab cursor, including over
+   other cards, so the interaction reads as "holding a card". */
+.hand-dragging * {
+  cursor: grabbing !important;
+}
+
 /* Your turn: faint halo breathing behind the whole hand fan. */
 .hand-turn::before {
   content: "";

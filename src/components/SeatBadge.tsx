@@ -1,5 +1,7 @@
 "use client";
 
+import { Crown } from "lucide-react";
+
 import type { Seat } from "@/lib/game/types";
 
 export function SeatBadge({
@@ -9,6 +11,7 @@ export function SeatBadge({
   ready = false,
   isMe = false,
   winner = false,
+  crown = false,
 }: {
   seat: Seat;
   username: string | null;
@@ -16,6 +19,7 @@ export function SeatBadge({
   ready?: boolean;
   isMe?: boolean;
   winner?: boolean;
+  crown?: boolean;
 }) {
   const ring = winner
     ? "border-lime text-lime"
@@ -28,8 +32,15 @@ export function SeatBadge({
     <div
       className={`flex items-center gap-1.5 rounded-full border bg-felt-deep/80 px-2.5 py-1 backdrop-blur sm:gap-2 sm:px-3 sm:py-1.5 ${ring} ${shadow}`}
     >
-      <span className="grid h-7 w-7 place-items-center rounded-full bg-ink/60 font-display text-sm font-bold">
+      <span className="relative grid h-7 w-7 place-items-center rounded-full bg-ink/60 font-display text-sm font-bold">
         {seat}
+        {crown && (
+          <Crown
+            aria-hidden
+            size={10}
+            className="absolute -top-1 left-0 -rotate-12 fill-amber-300 text-amber-300"
+          />
+        )}
       </span>
       <span className="max-w-20 truncate text-sm font-medium sm:max-w-28">
         {username ?? "Open"}

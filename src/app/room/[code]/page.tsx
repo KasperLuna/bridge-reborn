@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { Crown } from "lucide-react";
 
 import { SeatBadge } from "@/components/SeatBadge";
 import { KickPanel } from "@/components/KickPanel";
@@ -54,7 +55,7 @@ export default function RoomPage() {
   const [name, setName] = useState(savedName);
   const [joinPw, setJoinPw] = useState("");
   const [privacyPw, setPrivacyPw] = useState("");
-  const [showPrivacyPw, setShowPrivacyPw] = useState(false);
+  const [privacyDraft, setPrivacyDraft] = useState<"private" | null>(null);
 
   useRoomSync(session);
 
@@ -178,6 +179,7 @@ export default function RoomPage() {
                     username={rec.username}
                     isMe={session ? rec.id === session.seatId : false}
                     ready={rec.ready}
+                    crown={seat === "N" && room?.mode === "four"}
                   />
                 ) : session && room?.mode !== "pairs" ? (
                   <button
@@ -186,15 +188,29 @@ export default function RoomPage() {
                     onClick={() => void run(() => claim(seat))}
                     className="flex items-center gap-2 rounded-full border border-dashed border-cream/25 px-3 py-1.5 text-sm text-cream-dim transition-colors hover:border-lime/60 hover:text-lime disabled:opacity-40"
                   >
-                    <span className="grid h-7 w-7 place-items-center rounded-full bg-ink/60 font-display text-sm font-bold">
+                    <span className="relative grid h-7 w-7 place-items-center rounded-full bg-ink/60 font-display text-sm font-bold">
                       {seat}
+                      {seat === "N" && room?.mode === "four" && (
+                        <Crown
+                          aria-hidden
+                          size={10}
+                          className="absolute -top-1 left-0 -rotate-12 fill-amber-300 text-amber-300"
+                        />
+                      )}
                     </span>
                     Sit here
                   </button>
                 ) : (
                   <div className="flex items-center gap-2 rounded-full border border-dashed border-cream/20 px-3 py-1.5 text-sm text-cream-dim/60">
-                    <span className="grid h-7 w-7 place-items-center rounded-full bg-ink/60 font-display text-sm font-bold">
+                    <span className="relative grid h-7 w-7 place-items-center rounded-full bg-ink/60 font-display text-sm font-bold">
                       {seat}
+                      {seat === "N" && room?.mode === "four" && (
+                        <Crown
+                          aria-hidden
+                          size={10}
+                          className="absolute -top-1 left-0 -rotate-12 fill-amber-300 text-amber-300"
+                        />
+                      )}
                     </span>
                     Open
                   </div>
@@ -360,93 +376,120 @@ export default function RoomPage() {
                 </p>
               ))}
 
-            {/* Secondary actions */}
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {isSeated &&
+            {isSeated &&
                 room?.mode === "four" &&
                 room?.status === "waiting" && (
-                  <label className="flex items-center gap-2 text-sm text-cream-dim">
-                    <span>Ruleset</span>
-                    <select
-                      value={currentPreset ?? presets[0]?.id}
-                      disabled={busy}
-                      onChange={(e) =>
-                        void run(() => changeRuleset(e.target.value))
-                      }
-                      className="min-h-11 rounded-xl border border-cream/15 bg-ink/60 px-3 text-cream focus:border-lime/60 focus:outline-none disabled:opacity-40"
-                    >
-                      {presets.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              {isSeated &&
-                room?.mode === "four" &&
-                room?.status === "waiting" && (
-                  <label className="flex items-center gap-2 text-sm text-cream-dim">
-                    <span>Privacy</span>
-                    <select
-                      value={room?.privacy ?? "public"}
-                      disabled={busy}
-                      onChange={(e) => {
-                        const value = e.target.value as "public" | "private";
-                        if (value === "public") {
-                          setShowPrivacyPw(false);
-                          void run(() => changePrivacy("public"));
-                        } else {
-                          setShowPrivacyPw(true);
-                        }
-                      }}
-                      className="min-h-11 rounded-xl border border-cream/15 bg-ink/60 px-3 text-cream focus:border-lime/60 focus:outline-none disabled:opacity-40"
-                    >
-                      <option value="public">Public</option>
-                      <option value="private">Private</option>
-                    </select>
-                  </label>
-                )}
-              {isSeated &&
-                room?.mode === "four" &&
-                room?.status === "waiting" &&
-                showPrivacyPw && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="password"
-                      value={privacyPw}
-                      onChange={(e) => setPrivacyPw(e.target.value)}
-                      placeholder="New password"
-                      maxLength={64}
-                      className="min-h-11 w-40 rounded-xl border border-cream/15 bg-ink/60 px-3 text-cream placeholder:text-cream-dim/40 focus:border-lime/60 focus:outline-none"
-                    />
-                    <Button
-                      variant="ghost"
-                      className="px-3"
-                      disabled={busy || privacyPw.trim().length < 4}
-                      onClick={() =>
-                        void run(async () => {
-                          await changePrivacy("private", privacyPw.trim());
-                          setPrivacyPw("");
-                          setShowPrivacyPw(false);
-                        })
-                      }
-                    >
-                      Set password
-                    </Button>
+                  <div className="flex flex-col gap-3 rounded-2xl border border-cream/10 bg-felt-deep/70 p-4">
+                    <p className="text-[10px] font-semibold tracking-[0.3em] text-cream-dim/70 uppercase">
+                      Table settings
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <label className="flex flex-col gap-1.5 text-sm text-cream-dim">
+                        <span>Ruleset</span>
+                        <select
+                          value={currentPreset ?? presets[0]?.id}
+                          disabled={busy}
+                          onChange={(e) =>
+                            void run(() => changeRuleset(e.target.value))
+                          }
+                          className="min-h-11 rounded-xl border border-cream/15 bg-ink/60 px-3 text-cream focus:border-lime/60 focus:outline-none disabled:opacity-40"
+                        >
+                          {presets.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className="flex flex-col gap-1.5 text-sm text-cream-dim">
+                        <span>Privacy</span>
+                        <select
+                          value={privacyDraft ?? room?.privacy ?? "public"}
+                          disabled={busy}
+                          onChange={(e) => {
+                            const value = e.target.value as
+                              | "public"
+                              | "private";
+                            if (value === "public") {
+                              setPrivacyDraft(null);
+                              setPrivacyPw("");
+                              void run(() => changePrivacy("public"));
+                            } else {
+                              setPrivacyDraft("private");
+                            }
+                          }}
+                          className="min-h-11 rounded-xl border border-cream/15 bg-ink/60 px-3 text-cream focus:border-lime/60 focus:outline-none disabled:opacity-40"
+                        >
+                          <option value="public">Public</option>
+                          <option value="private">Private</option>
+                        </select>
+                      </label>
+                    </div>
+                    {privacyDraft === "private" && (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-xs text-cream-dim">
+                          Set a password (4+ chars) to make the room private.
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="password"
+                            value={privacyPw}
+                            onChange={(e) => setPrivacyPw(e.target.value)}
+                            placeholder="New password"
+                            maxLength={64}
+                            className="min-h-11 flex-1 rounded-xl border border-cream/15 bg-ink/60 px-3 text-cream placeholder:text-cream-dim/40 focus:border-lime/60 focus:outline-none"
+                          />
+                          <Button
+                            variant="ghost"
+                            className="px-3"
+                            disabled={busy || privacyPw.trim().length < 4}
+                            onClick={() =>
+                              void run(async () => {
+                                await changePrivacy(
+                                  "private",
+                                  privacyPw.trim(),
+                                );
+                                setPrivacyPw("");
+                                setPrivacyDraft(null);
+                              })
+                            }
+                          >
+                            Set password
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
-              {isSeated && room?.mode === "four" && <KickPanel />}
-              {isSeated && (
-                <Button
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => void run(() => claim(null))}
-                >
-                  Spectate
-                </Button>
+
+              {isSeated &&
+                room?.mode === "four" &&
+                seats.some(
+                  (s) =>
+                    !s.is_spectator && !s.is_bot && s.username !== session?.username,
+                ) && (
+                  <div className="flex flex-col gap-2 rounded-2xl border border-cream/10 bg-felt-deep/70 p-4">
+                  <p className="text-[10px] font-semibold tracking-[0.3em] text-cream-dim/70 uppercase">
+                    Players
+                  </p>
+                  <KickPanel />
+                </div>
               )}
-            </div>
+
+              {isSeated && (
+                <div className="flex flex-col gap-2 rounded-2xl border border-cream/10 bg-felt-deep/70 p-4">
+                  <p className="text-[10px] font-semibold tracking-[0.3em] text-cream-dim/70 uppercase">
+                    You
+                  </p>
+                  <Button
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={() => void run(() => claim(null))}
+                  >
+                    Spectate — give up your seat
+                  </Button>
+                </div>
+              )}
 
             {/* Danger zone */}
             <div className="border-t border-cream/10 pt-4">

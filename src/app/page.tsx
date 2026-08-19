@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
+import { pb } from "@/lib/pb";
 import { rememberName, savedName } from "@/lib/remember-name";
+import type { Room } from "@/lib/types";
 import { useSessionStore } from "@/store/session-store";
 
 const CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -29,6 +31,9 @@ export default function Home() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [roomStatus, setRoomStatus] = useState<
+    "checking" | "public" | "private" | "missing" | null
+  >(null);
   // Suppress the resume-session redirect while a quick-game nav is in flight
   // (solo must land on /game, not the lobby).
   const quickNavRef = useRef<"solo" | "pairs" | null>(null);
@@ -48,6 +53,10 @@ export default function Home() {
       setError("Pick a username first");
       return;
     }
+    if (roomStatus === "private" && !password.trim()) {
+      setError("This room needs a password");
+      return;
+    }
     setBusy(true);
     try {
       await join(targetCode, username.trim(), password.trim() || undefined);
@@ -57,6 +66,23 @@ export default function Home() {
       setError(err instanceof Error ? err.message : "Failed to join");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function checkRoom() {
+    const c = code.trim().toUpperCase();
+    if (!c) {
+      setRoomStatus(null);
+      return;
+    }
+    setRoomStatus("checking");
+    try {
+      const room = await pb
+        .collection("rooms")
+        .getFirstListItem<Room>(pb.filter("code = {:code}", { code: c }));
+      setRoomStatus(room.privacy === "private" ? "private" : "public");
+    } catch {
+      setRoomStatus("missing");
     }
   }
 
@@ -143,32 +169,53 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mt-2 flex flex-col gap-3 border-t border-cream/10 pt-4">
-            <p className="text-[10px] font-semibold tracking-[0.3em] text-cream-dim/70 uppercase">
-              Join a table
-            </p>
+          <div className="mt-4 flex items-center gap-3">
+            <span className="h-px flex-1 bg-cream/10" />
+            <span className="text-[10px] font-semibold tracking-[0.3em] text-cream-dim/60 uppercase">
+              or
+            </span>
+            <span className="h-px flex-1 bg-cream/10" />
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3">
             <label className="flex flex-col gap-1.5">
               <span className="text-sm text-cream-dim">Room code</span>
               <input
                 value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setCode(e.target.value.toUpperCase());
+                  setRoomStatus(null);
+                }}
+                onBlur={() => void checkRoom()}
                 placeholder="Leave blank to create"
                 maxLength={8}
                 className="min-h-11 rounded-xl border border-cream/15 bg-ink/50 px-4 font-mono tracking-widest text-cream placeholder:text-cream-dim/40 focus:border-lime/60 focus:outline-none"
               />
             </label>
 
-            <label className="flex flex-col gap-1.5">
-              <span className="text-sm text-cream-dim">Room password</span>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password (for private rooms)"
-                maxLength={64}
-                className="min-h-11 rounded-xl border border-cream/15 bg-ink/50 px-4 text-cream placeholder:text-cream-dim/40 focus:border-lime/60 focus:outline-none"
-              />
-            </label>
+            {roomStatus === "checking" && (
+              <p className="text-xs text-cream-dim/70">Checking…</p>
+            )}
+            {roomStatus === "missing" && (
+              <p className="text-xs text-cream-dim">
+                No room with that code — leave blank to create
+              </p>
+            )}
+            {roomStatus === "private" && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-sm text-cream-dim">
+                  🔒 Room password
+                </span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  maxLength={64}
+                  className="min-h-11 rounded-xl border border-cream/15 bg-ink/50 px-4 text-cream placeholder:text-cream-dim/40 focus:border-lime/60 focus:outline-none"
+                />
+              </label>
+            )}
 
             {error && <p className="text-sm text-danger">{error}</p>}
 

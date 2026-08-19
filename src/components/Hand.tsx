@@ -16,6 +16,7 @@ export function Hand({
   trumpSuit = null,
   staged = null,
   hiddenCards = [],
+  hoverable = false,
   onPlay,
   onPlayConfirm,
 }: {
@@ -24,6 +25,8 @@ export function Hand({
   trumpSuit?: Suit | null;
   staged?: Card | null;
   hiddenCards?: Card[];
+  /** Allow cursor tilt/hover even when the cards aren't playable (auction). */
+  hoverable?: boolean;
   onPlay?: (card: Card) => void;
   /** Drop a playable card on the table to confirm it without staging. */
   onPlayConfirm?: (card: Card, from: { x: number; y: number }) => void;
@@ -71,6 +74,8 @@ export function Hand({
     const onEnd = (e: PointerEvent) => {
       const d = dragStart.current;
       dragStart.current = null;
+      document.body.style.cursor = "";
+      document.body.classList.remove("hand-dragging");
       setPressedIdx(null);
       if (!d?.active) {
         // Plain click: never started a drag, nothing to clear.
@@ -194,6 +199,7 @@ export function Hand({
         const baseY = Math.pow(i - mid, 2) * baseDepth;
         const angle = (i - mid) * step;
         const clickable = inPlay && (playable ? playable.includes(card) : true);
+        const hoverAble = clickable || hoverable;
         const isStaged = staged === card;
         const hidden = hiddenCards.includes(card);
         const isDragging = drag?.card === card;
@@ -212,7 +218,9 @@ export function Hand({
         const y = baseY - dipFix - lift - (isStaged ? 24 - dipFix : 0) + nudgeY;
         const x = (i - mid) * offset + nudgeX;
         const isTrump = trumpSuit !== null && cardSuit(card) === trumpSuit;
-        const tiltable = clickable && canHover;
+        // Browsable cards (auction) tilt and rise a little, but far less than
+        // fully playable ones, so the fan reads as alive without implying a move.
+        const tiltable = hoverAble && canHover;
         // Cap deal stagger so big hands still land fast instead of trailing out.
         const settleDelay = Math.min(i, 8) * 0.02;
         const dealDelay = Math.min(i, 6) * 0.05;
@@ -244,6 +252,8 @@ export function Hand({
             ) {
               d.active = true;
               suppressClick.current = true;
+              document.body.style.cursor = "grabbing";
+              document.body.classList.add("hand-dragging");
               setHoveredIdx(null);
               setPressedIdx(null);
               setDrag({ card, x: e.clientX, y: e.clientY });
@@ -273,11 +283,23 @@ export function Hand({
             initial={{ y: 60, opacity: 0 }}
             animate={{
               x,
-              y: hoverLift ? y - 26 : tapLift ? y - 14 : y,
+              y: hoverLift
+                ? y - (clickable ? 26 : 12)
+                : tapLift
+                  ? y - 14
+                  : y,
               rotate: hoverLift ? 0 : angle,
-              scale: hoverLift ? 1.12 : tapLift ? 1.06 : isStaged ? 1.14 : 1,
+              scale: hoverLift
+                ? clickable
+                  ? 1.12
+                  : 1.05
+                : tapLift
+                  ? 1.06
+                  : isStaged
+                    ? 1.14
+                    : 1,
               opacity: hidden || isDragging ? 0 : 1,
-              zIndex: isStaged ? 70 : hoverLift || tapLift ? 60 : i,
+              zIndex: isStaged ? 70 : hoverLift || tapLift ? (clickable ? 60 : i) : i,
             }}
             style={
               hidden || !interactive ? { pointerEvents: "none" } : undefined
