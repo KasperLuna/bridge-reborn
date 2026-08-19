@@ -728,7 +728,7 @@ export default function GamePage() {
                 ? auctionPanel
                   ? "h-full w-full"
                   : "max-h-full w-full"
-                : "max-h-full w-full min-h-[21rem]"
+                : "max-h-full w-full sm:min-h-[21rem]"
             } min-[1020px]:h-auto min-[1020px]:w-[min(100cqw,100cqh)]`}
           >
             {SEATS.map((seat) => {
