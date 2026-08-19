@@ -187,7 +187,7 @@ export function Hand({
   return (
     <div
       className={`relative flex items-end justify-center pb-1 sm:pb-0 ${
-        eff === "md" ? "h-36 sm:h-52" : eff === "xl" ? "h-72" : "h-64"
+        eff === "md" ? "h-36 sm:h-52" : eff === "xl" ? "h-60" : "h-52"
       } ${anyPlayable ? "hand-turn" : ""}`}
     >
       {cards.map((card, i) => {

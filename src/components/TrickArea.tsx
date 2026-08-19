@@ -11,15 +11,15 @@ import { PlayingCard } from "./PlayingCard";
 export type TableDir = "top" | "right" | "bottom" | "left";
 
 const DIR_POS: Record<TableDir, string> = {
-  top: "left-1/2 top-0 -translate-x-1/2 -translate-y-1/3",
+  top: "left-1/2 top-0 -translate-x-1/2",
   right: "right-0 top-1/2 -translate-y-1/2 translate-x-1/3",
-  bottom: "left-1/2 bottom-0 -translate-x-1/2 translate-y-1/3",
+  bottom: "left-1/2 bottom-0 -translate-x-1/2",
   left: "left-0 top-1/2 -translate-y-1/2 -translate-x-1/3",
 };
 
 const SEATS: Seat[] = ["N", "E", "S", "W"];
 
-type TrickEff = "sm" | "md" | "lg";
+export type TrickEff = "sm" | "md" | "lg";
 
 /** Viewport-matched trick card size, shared with the play animation so the
     flying card lands at the same size as the slot it fills. */
@@ -69,7 +69,7 @@ const TRICK_EFFS: Record<
     h: 96,
     wrap: "h-24 w-16",
     radius: "rounded-xl",
-    container: "w-56 sm:w-80",
+    container: "w-48 h-60",
   },
   lg: {
     card: "lg",
@@ -91,11 +91,11 @@ function slotCenter(
 ): { x: number; y: number } {
   switch (dir) {
     case "top":
-      return { x: w / 2, y: -ch / 3 + ch / 2 };
+      return { x: w / 2, y: ch / 2 };
     case "right":
       return { x: w - cw + cw / 3 + cw / 2, y: h / 2 };
     case "bottom":
-      return { x: w / 2, y: h - ch + ch / 3 + ch / 2 };
+      return { x: w / 2, y: h - ch / 2 };
     case "left":
       return { x: -cw / 3 + cw / 2, y: h / 2 };
   }

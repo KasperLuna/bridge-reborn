@@ -20,6 +20,7 @@ import { SeatBadge } from "@/components/SeatBadge";
 import {
   TrickArea,
   type TableDir,
+  type TrickEff,
   useTrickCardSize,
 } from "@/components/TrickArea";
 import { Button } from "@/components/ui/Button";
@@ -273,6 +274,37 @@ export default function GamePage() {
   }, [peekOther]);
 
   const trickCardSize = useTrickCardSize();
+
+  const [tablet, setTablet] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(
+      "(min-width: 640px) and (max-width: 1019px)",
+    );
+    const update = () => setTablet(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // 640-1019: the felt is full-width (like mobile), floored at 20rem so it
+  // clears the md trick cards. Size the trick cards to md there; elsewhere keep
+  // the viewport-derived size, downgrading to sm only when the felt is short.
+  const tableRef = useRef<HTMLDivElement | null>(null);
+  const [tableH, setTableH] = useState(0);
+  useEffect(() => {
+    const el = tableRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() =>
+      setTableH(el.getBoundingClientRect().height),
+    );
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const trickEff: TrickEff = tablet
+    ? "md"
+    : tableH && tableH < 288
+      ? "sm"
+      : trickCardSize;
 
   if (!session) return null;
   if (!hand || !ruleset) {
@@ -685,14 +717,17 @@ export default function GamePage() {
       </header>
 
       <div className="flex min-h-0 w-full flex-1 flex-col lg:flex-row">
-        <div className="[container-type:size] relative flex min-h-0 w-full flex-1 items-center justify-center px-3 sm:px-4">
+        <div
+          ref={tableRef}
+          className="[container-type:size] relative flex min-h-0 w-full flex-1 items-center justify-center px-3 sm:px-4"
+        >
           <div
             data-play-drop
-            className={`felt relative aspect-square rounded-4xl ${
+            className={`felt relative aspect-square min-h-[21rem] rounded-4xl ${
               phase === "auction" && auctionPanel
                 ? "h-full w-full"
                 : "max-h-full w-full"
-            } sm:h-auto sm:w-[min(100cqw,100cqh)]`}
+            } min-[1020px]:h-auto min-[1020px]:w-[min(100cqw,100cqh)]`}
           >
             {SEATS.map((seat) => {
               const rec = seatAt(seats, seat);
@@ -752,6 +787,7 @@ export default function GamePage() {
                   cards={trickCards}
                   winner={winnerSeat}
                   positions={dirs}
+                  size={trickEff}
                   trumpSuit={trumpSuit}
                   collecting={
                     !!(wonAnim && wonAnim.phase === "collect" && !openTrick)
@@ -919,7 +955,7 @@ export default function GamePage() {
             if (!inFlight) finishPlay(playAnim.card, seatIdOf(playAnim.seat));
           }}
         >
-          <PlayingCard card={playAnim.card} size={trickCardSize} />
+          <PlayingCard card={playAnim.card} size={trickEff} />
         </motion.div>
       )}
 
