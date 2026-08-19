@@ -150,9 +150,9 @@ export function AuctionPanel({
 
   return (
     <div className="mx-auto flex max-h-[min(28rem,calc(100cqh-4rem))] w-full max-w-md flex-col gap-2 overflow-y-auto rounded-2xl border border-cream/10 bg-felt-deep/70 p-3 backdrop-blur">
-      {/* History: single row that scrolls sideways, so wrapping chips never
-          inflate the panel's vertical budget on narrow screens. */}
-      <div className="flex min-h-8 shrink-0 flex-nowrap items-center gap-1.5 overflow-x-auto">
+      {/* History: chips wrap; panel scrolls as fallback if the wrap inflates
+          the vertical budget past the cap. */}
+      <div className="flex min-h-8 shrink-0 flex-wrap items-center gap-1.5">
         <AuctionChips entries={entries} />
       </div>
 
