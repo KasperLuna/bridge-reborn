@@ -723,10 +723,12 @@ export default function GamePage() {
         >
           <div
             data-play-drop
-            className={`felt relative aspect-square min-h-[21rem] rounded-4xl ${
-              phase === "auction" && auctionPanel
-                ? "h-full w-full"
-                : "max-h-full w-full"
+            className={`felt relative aspect-square rounded-4xl ${
+              phase === "auction"
+                ? auctionPanel
+                  ? "h-full w-full"
+                  : "max-h-full w-full"
+                : "max-h-full w-full min-h-[21rem]"
             } min-[1020px]:h-auto min-[1020px]:w-[min(100cqw,100cqh)]`}
           >
             {SEATS.map((seat) => {
