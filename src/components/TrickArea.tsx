@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "motion/react";
 
 import { cardRank, cardSuit, rankIndex } from "@/lib/game/cards";
@@ -111,6 +111,7 @@ export function TrickArea({
   onCollected,
   trumpSuit = null,
   size,
+  toast = null,
 }: {
   cards: { card: string; seat: Seat }[];
   winner: Seat | null;
@@ -122,6 +123,8 @@ export function TrickArea({
   trumpSuit?: Suit | null;
   /** Override the viewport-derived size (replay wants a tighter layout). */
   size?: TrickEff;
+  /** Banner shown above the top card slot (must not overlap the cards). */
+  toast?: ReactNode;
 }) {
   const bySeat = new Map(cards.map((c) => [c.seat, c.card]));
   const containerRef = useRef<HTMLDivElement>(null);
@@ -240,6 +243,14 @@ export function TrickArea({
         </div>
       )}
       {collecting && <CountdownRing />}
+      {toast && (
+        <div
+          className="pointer-events-none absolute bottom-full left-1/2 z-30 -translate-x-1/2"
+          style={{ marginBottom: eff.h / 3 + 8 }}
+        >
+          {toast}
+        </div>
+      )}
     </div>
   );
 }

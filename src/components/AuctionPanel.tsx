@@ -3,8 +3,8 @@
 import { useState } from "react";
 
 import type { LegalCalls } from "@/lib/game/bidding";
-import { bidValue, formatCall, parseAuctionCall } from "@/lib/game/bidding";
-import type { Strain } from "@/lib/game/types";
+import { bidValue, formatCall, parseAuctionCall, passNeed } from "@/lib/game/bidding";
+import type { Partnership, Strain } from "@/lib/game/types";
 
 import { Button } from "./ui/Button";
 
@@ -67,12 +67,14 @@ function bidConfirm(call: string): string {
 export function AuctionPanel({
   entries,
   legal,
+  mySide,
   myTurn,
   disabled,
   onCall,
 }: {
   entries: AuctionEntryView[];
   legal: LegalCalls;
+  mySide: Partnership;
   myTurn: boolean;
   disabled: boolean;
   onCall: (call: string) => void;
@@ -81,6 +83,7 @@ export function AuctionPanel({
   const [low, setLow] = useState(false);
   const stagedCall = staged !== null ? parseAuctionCall(staged) : null;
   const stagedLevel = stagedCall?.kind === "bid" ? stagedCall.level : null;
+  const passNeedInfo = staged === "P" ? passNeed(entries, mySide) : null;
   const locked = disabled || !myTurn;
   const selected = (call: string) =>
     staged === call
@@ -205,6 +208,17 @@ export function AuctionPanel({
             {stagedLevel !== null && (
               <p className="text-xs text-cream-dim">
                 Need {stagedLevel + 6} · opponents need {8 - stagedLevel}.
+              </p>
+            )}
+            {passNeedInfo && (
+              <p className="text-xs text-cream-dim">
+                {passNeedInfo.contractIsMine
+                  ? `Need ${passNeedInfo.level + 6} · opponents need ${
+                      8 - passNeedInfo.level
+                    }.`
+                  : `Opponents need ${passNeedInfo.level + 6} · you need ${
+                      8 - passNeedInfo.level
+                    }.`}
               </p>
             )}
           </>

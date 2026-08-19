@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { motion } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import { Settings } from "lucide-react";
 
 import { AuctionChips, AuctionPanel } from "@/components/AuctionPanel";
@@ -101,6 +101,8 @@ export default function GamePage() {
   const [confirmConcede, setConfirmConcede] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [kickOpen, setKickOpen] = useState(false);
+  const [peekOther, setPeekOther] = useState(false);
+  const peekRef = useRef<HTMLDivElement | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [wonAnim, setWonAnim] = useState<{
     trickId: string;
@@ -250,6 +252,26 @@ export default function GamePage() {
     isSpectator: !!session?.isSpectator,
   });
 
+  // Close the pairs peek popover once it's no longer this side's bid turn.
+  useEffect(() => {
+    const mine = bidTurn && mySeats.includes(bidTurn as Seat);
+    if (!(phase === "auction" && mySeats.length > 1 && mine))
+      setPeekOther(false);
+  }, [phase, mySeats, bidTurn]);
+
+  // Non-blocking popover: dismiss on any tap outside the popover itself.
+  useEffect(() => {
+    if (!peekOther) return;
+    const onDown = (e: PointerEvent) => {
+      if (peekRef.current && !peekRef.current.contains(e.target as Node)) {
+        if (!(e.target as Element | null)?.closest?.("[data-peek-trigger]"))
+          setPeekOther(false);
+      }
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [peekOther]);
+
   const trickCardSize = useTrickCardSize();
 
   if (!session) return null;
@@ -295,15 +317,22 @@ export default function GamePage() {
   });
   const myBidTurn = mySeatData.some((d) => d.isBidTurn);
   const activeBidSeat = mySeatData.find((d) => d.isBidTurn) ?? null;
-
   // On lg+ the player's hands move to a side column next to the table; the
   // player's own seat anchors the first hand, the partner hand stacks below.
   const primaryData =
     mySeatData.find((d) => d.seat === primarySeat) ?? mySeatData[0];
   const partnerData =
-    mySeatData.length > 1 && primaryData
+    mySeats.length > 1 && primaryData
       ? (mySeatData.find((d) => d.seat !== primaryData.seat) ?? null)
       : null;
+
+  // Pairs bidding on mobile: only the bidding hand stays grounded; the partner
+  // hand is a popover peek so the bid panel keeps the vertical room.
+  const auctionActive =
+    phase === "auction" &&
+    myBidTurn &&
+    mySeats.length > 1 &&
+    !!partnerData;
 
   // The full bid panel sits in the felt center on sm+, but on phones it docks
   // in the footer (below the table) so it can't overlap the seat badges and
@@ -314,6 +343,7 @@ export default function GamePage() {
       <AuctionPanel
         entries={auction}
         legal={activeBidSeat.bidInfo}
+        mySide={partnershipOf(activeBidSeat.seat)}
         myTurn
         disabled={pending}
         onCall={(call) => void bid(call, activeBidSeat.seatId)}
@@ -453,8 +483,15 @@ export default function GamePage() {
   // Sort row + confirm row + the player's hand(s). Rendered in the footer on
   // phones and in the side column on lg+; the confirm row's height is reserved
   // during play so staging a card never shifts the layout (which would make the
-  // play-animation target stale).
-  const handsStack = (
+  // play-animation target stale). The mobile footer swaps in the active bidding
+  // hand (with a peek toggle) so the bid panel has room in pairs mode.
+  const buildHandsStack = ({
+    primary = primaryData,
+    showPartner = true,
+  }: {
+    primary?: (typeof mySeatData)[number] | null;
+    showPartner?: boolean;
+  } = {}) => (
     <div className="flex flex-col items-center gap-3">
       <div className="mb-1 flex items-center justify-center gap-1">
         <span className="mr-1 text-[10px] tracking-[0.25em] text-cream-dim/60 uppercase">
@@ -503,10 +540,11 @@ export default function GamePage() {
           )}
         </div>
       )}
-      {primaryData && renderHand(primaryData)}
-      {mySeats.length > 1 && partnerData && renderHand(partnerData)}
+      {primary && renderHand(primary)}
+      {mySeats.length > 1 && showPartner && partnerData && renderHand(partnerData)}
     </div>
   );
+  const handsStack = buildHandsStack();
 
   function finishPlay(card: Card, seatId?: string) {
     setStaged(null);
@@ -727,19 +765,21 @@ export default function GamePage() {
                         : prev,
                     )
                   }
+                  toast={
+                    winnerToast ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: -12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-full bg-lime px-5 py-2 font-semibold whitespace-nowrap text-ink shadow-[0_0_30px_-6px_rgb(186_255_61/60%)]"
+                      >
+                        {winnerToast} wins the trick
+                      </motion.div>
+                    ) : null
+                  }
                 />
               )}
             </div>
 
-            {winnerToast && (
-              <motion.div
-                initial={{ opacity: 0, y: -12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="pointer-events-none absolute top-16 left-1/2 z-30 -translate-x-1/2 rounded-full bg-lime px-5 py-2 font-semibold whitespace-nowrap text-ink shadow-[0_0_30px_-6px_rgb(186_255_61/60%)]"
-              >
-                {winnerToast} wins the trick
-              </motion.div>
-            )}
           </div>
         </div>
 
@@ -798,7 +838,69 @@ export default function GamePage() {
             )}
           </div>
         ) : !handOver ? (
-          <div className="mx-auto max-w-2xl">{handsStack}</div>
+          <div className="mx-auto flex max-w-2xl flex-col items-center gap-2">
+            {auctionActive && (
+              <div className="relative">
+                <button
+                  type="button"
+                  data-peek-trigger
+                  onClick={() => setPeekOther((v) => !v)}
+                  aria-haspopup="dialog"
+                  aria-expanded={peekOther}
+                  className="rounded-full border border-cream/10 bg-felt-deep/70 px-3 py-1 text-xs text-cream-dim transition-colors hover:text-cream"
+                >
+                  Peek at other hand
+                </button>
+                <AnimatePresence>
+                  {peekOther && (
+                    <div
+                      ref={peekRef}
+                      className="absolute bottom-full left-1/2 z-[70] mb-3 w-[calc(100vw-2rem)] max-w-md -translate-x-1/2"
+                    >
+                      <motion.div
+                        initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 12, scale: 0.96 }}
+                        transition={{ duration: 0.18, ease: "easeOut" }}
+                        className="relative w-full rounded-2xl border border-lime/30 bg-ink/95 p-2 shadow-xl"
+                      >
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-[10px] tracking-[0.25em] text-lime/70 uppercase">
+                            Peek at other hand
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setPeekOther(false)}
+                            aria-label="Close peek"
+                            className="px-1 text-sm text-cream-dim hover:text-cream"
+                          >
+                            ×
+                          </button>
+                        </div>
+                        <div className="pointer-events-none absolute -bottom-1 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 rounded-[2px] border-r border-b border-lime/30 bg-ink/95" />
+                        <div className="flex flex-wrap justify-center gap-1 pt-1 pb-1">
+                          {partnerData!.cards.map((card) => (
+                            <PlayingCard
+                              key={card}
+                              card={card}
+                              size="sm"
+                              playable={false}
+                            />
+                          ))}
+                        </div>
+                      </motion.div>
+                    </div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+            {buildHandsStack({
+              primary: auctionActive
+                ? (activeBidSeat ?? primaryData)
+                : primaryData,
+              showPartner: !auctionActive,
+            })}
+          </div>
         ) : null}
       </footer>
 

@@ -9,6 +9,7 @@ import {
   legalCalls,
   lastBid,
   parseAuctionCall,
+  passNeed,
 } from "./bidding";
 import type { ScoringConfig, Vulnerability } from "./types";
 import { isSideVulnerable, scoreContract } from "./scoring";
@@ -164,6 +165,14 @@ describe("bidding", () => {
       redoubled: false,
     });
     expect(lastBid(doubled)?.value).toBe(12);
+  });
+
+  it("pass need reflects the standing contract and its owner", () => {
+    const theirs = [entry("2H", "e", "EW")];
+    expect(passNeed(theirs, "NS")).toEqual({ level: 2, contractIsMine: false });
+    const ours = [entry("2H", "n", "NS")];
+    expect(passNeed(ours, "NS")).toEqual({ level: 2, contractIsMine: true });
+    expect(passNeed([], "NS")).toBeNull();
   });
 
   it("tracks high and low bids on independent tracks", () => {

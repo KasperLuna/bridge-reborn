@@ -123,6 +123,21 @@ function lastBidOf(
   return null;
 }
 
+export type PassNeed = { level: number; contractIsMine: boolean } | null;
+
+/** Standing contract behind a staged pass: last bid's level and whether it
+    belongs to the passer's side. Null when the auction has no bid yet. */
+export function passNeed(
+  entries: AuctionEntry[],
+  mySide: Partnership,
+): PassNeed {
+  const last = lastBid(entries);
+  if (!last) return null;
+  const call = parseAuctionCall(last.entry.call);
+  if (call.kind !== "bid") return null;
+  return { level: call.level, contractIsMine: last.entry.side === mySide };
+}
+
 export function legalCalls(
   entries: AuctionEntry[],
   actor: Partnership,
