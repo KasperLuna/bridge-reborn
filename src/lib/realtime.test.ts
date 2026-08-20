@@ -5,7 +5,11 @@ type Handler = (e?: Event) => void;
 let visibilityHandler: Handler | null = null;
 let onlineHandler: Handler | null = null;
 
-const doc = {
+const doc: {
+  visibilityState: "hidden" | "visible";
+  addEventListener: (t: string, h: Handler) => void;
+  removeEventListener: (t: string, h: Handler) => void;
+} = {
   visibilityState: "hidden",
   addEventListener: (_t: string, h: Handler) => {
     visibilityHandler = h;
@@ -13,7 +17,7 @@ const doc = {
   removeEventListener: (_t: string, h: Handler) => {
     if (visibilityHandler === h) visibilityHandler = null;
   },
-} as unknown as Document;
+};
 
 const win = {
   addEventListener: (_t: string, h: Handler) => {
