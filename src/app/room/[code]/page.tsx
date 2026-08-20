@@ -54,7 +54,7 @@ export default function RoomPage() {
   const start = useRoomStore((s) => s.start);
 
   const [busy, setBusy] = useState(false);
-  const [name, setName] = useState(savedName);
+  const [name, setName] = useState("");
   const [joinPw, setJoinPw] = useState("");
   const [privacyPw, setPrivacyPw] = useState("");
   const [privacyDraft, setPrivacyDraft] = useState<"private" | null>(null);
@@ -91,6 +91,10 @@ export default function RoomPage() {
   useEffect(() => {
     init();
   }, [init]);
+
+  useEffect(() => {
+    setName(savedName());
+  }, []);
 
   useEffect(() => {
     if (session && room?.status === "active") {

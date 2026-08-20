@@ -26,7 +26,7 @@ export default function Home() {
   const join = useSessionStore((s) => s.join);
   const quick = useSessionStore((s) => s.quick);
 
-  const [username, setUsername] = useState(savedName);
+  const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -41,6 +41,10 @@ export default function Home() {
   useEffect(() => {
     init();
   }, [init]);
+
+  useEffect(() => {
+    setUsername(savedName());
+  }, []);
 
   useEffect(() => {
     if (session && !quickNavRef.current)
