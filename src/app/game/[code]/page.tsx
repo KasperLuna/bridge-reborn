@@ -31,7 +31,7 @@ import { useRoomSync } from "@/hooks/useRoomSync";
 import { useTurnAlerts } from "@/hooks/useTurnAlerts";
 import { formatCall } from "@/lib/game/bidding";
 import { sortHand, sortHandByRank } from "@/lib/game/cards";
-import { ddOutcome } from "@/lib/game/scoring";
+import { endOfHandTag } from "@/lib/game/scoring";
 import { opponentsOf, partnershipOf, seatOfUsername } from "@/lib/game/seats";
 import type { Card, DdResult, GamePlayers, Seat } from "@/lib/game/types";
 import { resolveRuleset } from "@/lib/rulesets";
@@ -856,9 +856,11 @@ export default function GamePage() {
             })}
 
             <EmoteOverlay
-              positions={Object.fromEntries(
-                SEATS.map((s) => [s, badgeClass(dirs[s])]),
-              ) as Record<Seat, string>}
+              positions={
+                Object.fromEntries(
+                  SEATS.map((s) => [s, badgeClass(dirs[s])]),
+                ) as Record<Seat, string>
+              }
             />
 
             {/* The bid panel sits centered in the felt (between the badge strips). One
@@ -1165,9 +1167,7 @@ export default function GamePage() {
           isSeated={!session.isSpectator}
           allReady={allFourReady(seats)}
           myReady={!!seats.find((s) => s.id === session.seatId)?.ready}
-          readyCount={
-            seats.filter((s) => s.ready && !s.is_spectator).length
-          }
+          readyCount={seats.filter((s) => s.ready && !s.is_spectator).length}
           onReady={(v) => void ready(v)}
           onNext={() => void startNewGame()}
           onSpectate={handleSpectate}
@@ -1287,6 +1287,18 @@ function HandOverOverlay({
     }
   }
 
+  const made = result ? result.tricks_made >= result.tricks_required : null;
+  const tag =
+    result && ddResult
+      ? endOfHandTag({
+          dd: { maxTricks: ddResult.maxTricks },
+          tricksMade: result.tricks_made,
+          tricksRequired: result.tricks_required,
+          nsTricks,
+          ewTricks,
+        })
+      : null;
+
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-ink/80 p-4 backdrop-blur-sm">
       <div className="felt w-full max-w-sm rounded-3xl p-6 text-center">
@@ -1345,40 +1357,45 @@ function HandOverOverlay({
             ) : (
               <>
                 <p className="text-xs tracking-[0.3em] text-lime/70 uppercase">
-                  Hand over
+                  Hand over{contractShorthand ? ` · ${contractShorthand}` : ""}
                 </p>
-                <h2 className="mt-2 font-display text-3xl font-black text-cream">
-                  {result
-                    ? `${contractShorthand} ${result.result_delta >= 0 ? "+" : ""}${result.result_delta}`
-                    : "Passed out"}
-                </h2>
-                {handWinnerNames?.some(Boolean) && (
-                  <p className="mt-2 font-display text-xl font-bold text-lime">
-                    {handWinnerNames.filter(Boolean).join(" & ")} win
-                  </p>
-                )}
-                <div className="mt-4 flex justify-center gap-6 text-sm">
-                  <span className="text-cream-dim">
-                    NS{" "}
-                    <span className="font-display text-lg text-cream">
-                      {nsTricks}
-                    </span>{" "}
-                    <span className="text-xs">tricks</span>
-                  </span>
-                  <span className="text-cream-dim">
-                    EW{" "}
-                    <span className="font-display text-lg text-cream">
-                      {ewTricks}
-                    </span>{" "}
-                    <span className="text-xs">tricks</span>
-                  </span>
-                </div>
-                {ddResult && result && (
-                  <DdVerdictLine
-                    maxTricks={ddResult.maxTricks}
-                    tricksMade={result.tricks_made}
-                    tricksRequired={result.tricks_required}
-                  />
+                {result ? (
+                  <>
+                    <h2
+                      className={`mt-2 font-display text-4xl font-black ${
+                        made ? "text-lime" : "text-danger"
+                      }`}
+                    >
+                      {made ? "Made" : "Set"}{" "}
+                      <span className="text-cream">
+                        {result.tricks_made}/{result.tricks_required}
+                      </span>
+                    </h2>
+                    <p className="mt-1 text-sm text-cream-dim">
+                      {handWinnerNames?.some(Boolean)
+                        ? `${handWinnerNames.filter(Boolean).join(" & ")} win · `
+                        : ""}
+                      NS {nsTricks} / EW {ewTricks}
+                    </p>
+                    {tag && (
+                      <p
+                        className={`mt-2 text-xs tracking-[0.25em] uppercase ${
+                          tag.tone === "good"
+                            ? "font-bold text-lime"
+                            : tag.tone === "danger"
+                              ? "font-bold text-danger"
+                              : "text-cream-dim/70"
+                        }`}
+                        title="Double-dummy result: computed with all four hands visible, assuming perfect play on both sides. It is the maximum tricks the declaring side can take on the contract strain, regardless of how the hand was actually played."
+                      >
+                        {tag.text}
+                      </p>
+                    )}
+                  </>
+                ) : (
+                  <h2 className="mt-2 font-display text-3xl font-black text-cream">
+                    Passed out
+                  </h2>
                 )}
               </>
             )}
@@ -1450,31 +1467,5 @@ function HandOverOverlay({
         )}
       </div>
     </div>
-  );
-}
-
-/** "Upset!" when the result contradicts double-dummy; otherwise a muted
-    double-dummy readout. */
-function DdVerdictLine({
-  maxTricks,
-  tricksMade,
-  tricksRequired,
-}: {
-  maxTricks: number;
-  tricksMade: number;
-  tricksRequired: number;
-}) {
-  const outcome = ddOutcome({ maxTricks }, tricksMade, tricksRequired);
-  if (!outcome) return null;
-  return (
-    <p
-      className={`mt-3 text-xs tracking-[0.25em] uppercase ${
-        outcome.upset ? "font-bold text-danger" : "text-cream-dim/70"
-      }`}
-      title="Double-dummy result: computed with all four hands visible, assuming perfect play on both sides. It is the maximum tricks the declaring side can take on the contract strain, regardless of how the hand was actually played."
-    >
-      {outcome.upset ? "Upset! " : ""}
-      Double-dummy: {maxTricks} tricks
-    </p>
   );
 }

@@ -13,7 +13,7 @@ import {
   passNeed,
 } from "./bidding";
 import type { ScoringConfig, Vulnerability } from "./types";
-import { isSideVulnerable, scoreContract } from "./scoring";
+import { isSideVulnerable, scoreContract, endOfHandTag } from "./scoring";
 import { isHandOver, legalPlays, trickWinner, type TrickPlay } from "./trick";
 
 const entry = (
@@ -457,5 +457,58 @@ describe("scoring", () => {
       declaring: -300,
       defending: 300,
     });
+  });
+
+  it("end-of-hand tag: upset beats cold set beats early stop", () => {
+    // Set but DD maxTricks says it makes → blown a makeable (danger).
+    expect(
+      endOfHandTag({
+        dd: { maxTricks: 9 },
+        tricksMade: 4,
+        tricksRequired: 7,
+        nsTricks: 4,
+        ewTricks: 3,
+      }),
+    ).toEqual({ text: "Missed a makeable · DD max 9", tone: "danger" });
+    // Made but DD says impossible → beat the odds (good).
+    expect(
+      endOfHandTag({
+        dd: { maxTricks: 6 },
+        tricksMade: 7,
+        tricksRequired: 7,
+        nsTricks: 7,
+        ewTricks: 6,
+      }),
+    ).toEqual({ text: "Beat the odds · DD max 6", tone: "good" });
+    // Set and DD agrees it's cold → cold set, no early-stop tag.
+    expect(
+      endOfHandTag({
+        dd: { maxTricks: 5 },
+        tricksMade: 0,
+        tricksRequired: 7,
+        nsTricks: 0,
+        ewTricks: 2,
+      }),
+    ).toEqual({ text: "Cold set · DD max 5", tone: "muted" });
+    // Set, no DD solve available, ended before 13 tricks → early stop.
+    expect(
+      endOfHandTag({
+        dd: null,
+        tricksMade: 0,
+        tricksRequired: 7,
+        nsTricks: 0,
+        ewTricks: 7,
+      }),
+    ).toEqual({ text: "Ended early · 7 tricks set it", tone: "muted" });
+    // Full 13-trick hand with nothing to explain → no tag.
+    expect(
+      endOfHandTag({
+        dd: { maxTricks: 9 },
+        tricksMade: 7,
+        tricksRequired: 7,
+        nsTricks: 7,
+        ewTricks: 6,
+      }),
+    ).toBeNull();
   });
 });

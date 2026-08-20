@@ -109,3 +109,42 @@ export function ddOutcome(
   const ddMakes = dd.maxTricks >= tricksRequired;
   return { made, ddMakes, upset: made !== ddMakes };
 }
+
+/** At-a-glance verdict line for the end-of-hand dialog. DD tag when it
+    explains the result (upset, or cold set); otherwise an early-stop tag when
+    the hand ended before all 13 tricks (bid-whist rulesets). Upset has two
+    flavors: made against DD odds (good) vs blown a makeable contract
+    (danger). */
+export function endOfHandTag(args: {
+  dd: { maxTricks: number } | null;
+  tricksMade: number;
+  tricksRequired: number;
+  nsTricks: number;
+  ewTricks: number;
+}): { text: string; tone: "good" | "danger" | "muted" } | null {
+  const outcome = ddOutcome(args.dd, args.tricksMade, args.tricksRequired);
+  if (outcome?.upset)
+    return outcome.made
+      ? {
+          text: `Beat the odds · DD max ${args.dd!.maxTricks}`,
+          tone: "good",
+        }
+      : {
+          text: `Missed a makeable · DD max ${args.dd!.maxTricks}`,
+          tone: "danger",
+        };
+  if (outcome && !outcome.ddMakes)
+    return {
+      text: `Cold set · DD max ${args.dd!.maxTricks}`,
+      tone: "muted",
+    };
+  if (
+    args.tricksMade < args.tricksRequired &&
+    args.nsTricks + args.ewTricks < 13
+  )
+    return {
+      text: `Ended early · ${13 - args.tricksRequired + 1} tricks set it`,
+      tone: "muted",
+    };
+  return null;
+}
