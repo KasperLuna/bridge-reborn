@@ -202,7 +202,15 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["1", "2", "3", "4", "5", "6", "7"]
+        "values": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "7"
+        ]
       },
       {
         "help": "",
@@ -214,7 +222,13 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["C", "D", "H", "S", "NT"]
+        "values": [
+          "C",
+          "D",
+          "H",
+          "S",
+          "NT"
+        ]
       },
       {
         "help": "",
@@ -226,7 +240,10 @@
         "required": false,
         "system": false,
         "type": "select",
-        "values": ["high", "low"]
+        "values": [
+          "high",
+          "low"
+        ]
       },
       {
         "help": "",
@@ -258,7 +275,12 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["N", "S", "E", "W"]
+        "values": [
+          "N",
+          "S",
+          "E",
+          "W"
+        ]
       }
     ],
     "indexes": [],
@@ -701,7 +723,12 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["N", "S", "E", "W"]
+        "values": [
+          "N",
+          "S",
+          "E",
+          "W"
+        ]
       }
     ],
     "indexes": [],
@@ -791,7 +818,12 @@
         "required": false,
         "system": false,
         "type": "select",
-        "values": ["N", "S", "E", "W"]
+        "values": [
+          "N",
+          "S",
+          "E",
+          "W"
+        ]
       },
       {
         "help": "",
@@ -833,6 +865,32 @@
         "required": false,
         "system": false,
         "type": "bool"
+      },
+      {
+        "autogeneratePattern": "",
+        "help": "",
+        "hidden": false,
+        "id": "text1000000003",
+        "max": 32,
+        "min": 0,
+        "name": "last_emote",
+        "pattern": "",
+        "presentable": false,
+        "primaryKey": false,
+        "required": false,
+        "system": false,
+        "type": "text"
+      },
+      {
+        "hidden": false,
+        "id": "date1000000004",
+        "max": "",
+        "min": "",
+        "name": "emote_at",
+        "presentable": false,
+        "required": false,
+        "system": false,
+        "type": "date"
       }
     ],
     "indexes": [],
@@ -919,7 +977,11 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["waiting", "active", "finished"]
+        "values": [
+          "waiting",
+          "active",
+          "finished"
+        ]
       },
       {
         "help": "",
@@ -955,7 +1017,11 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["four", "pairs", "solo"]
+        "values": [
+          "four",
+          "pairs",
+          "solo"
+        ]
       },
       {
         "help": "",
@@ -967,7 +1033,10 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["public", "private"]
+        "values": [
+          "public",
+          "private"
+        ]
       },
       {
         "autogeneratePattern": "",
@@ -1119,7 +1188,10 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["open", "passed"]
+        "values": [
+          "open",
+          "passed"
+        ]
       },
       {
         "help": "",
@@ -1249,7 +1321,12 @@
         "required": true,
         "system": false,
         "type": "select",
-        "values": ["N", "S", "E", "W"]
+        "values": [
+          "N",
+          "S",
+          "E",
+          "W"
+        ]
       },
       {
         "help": "",
@@ -1261,7 +1338,12 @@
         "required": false,
         "system": false,
         "type": "select",
-        "values": ["N", "S", "E", "W"]
+        "values": [
+          "N",
+          "S",
+          "E",
+          "W"
+        ]
       }
     ],
     "indexes": [],

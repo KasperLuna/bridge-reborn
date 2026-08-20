@@ -6,6 +6,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { Eye, Settings } from "lucide-react";
 
 import { AuctionChips, AuctionPanel } from "@/components/AuctionPanel";
+import { EmoteOverlay } from "@/components/EmoteOverlay";
+import { EmotePicker } from "@/components/EmotePicker";
 import { Hand } from "@/components/Hand";
 import { KickDialog } from "@/components/KickPanel";
 import {
@@ -829,6 +831,7 @@ export default function GamePage() {
           >
             {SEATS.map((seat) => {
               const rec = seatAt(seats, seat);
+              const mine = mySeats.includes(seat);
               return (
                 <div
                   key={seat}
@@ -838,16 +841,25 @@ export default function GamePage() {
                   data-seat-badge={seat}
                   className={`absolute z-20 ${badgeClass(dirs[seat])}`}
                 >
-                  <SeatBadge
-                    seat={seat}
-                    username={rec?.username ?? p[seat] ?? null}
-                    active={activeSeat === seat}
-                    winner={winnerSeat === seat}
-                    isMe={mySeats.includes(seat)}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <SeatBadge
+                      seat={seat}
+                      username={rec?.username ?? p[seat] ?? null}
+                      active={activeSeat === seat}
+                      winner={winnerSeat === seat}
+                      isMe={mine}
+                    />
+                    {mine && !session.isSpectator && <EmotePicker />}
+                  </div>
                 </div>
               );
             })}
+
+            <EmoteOverlay
+              positions={Object.fromEntries(
+                SEATS.map((s) => [s, badgeClass(dirs[s])]),
+              ) as Record<Seat, string>}
+            />
 
             {/* The bid panel sits centered in the felt (between the badge strips). One
               overlay across breakpoints so the panel is a single component

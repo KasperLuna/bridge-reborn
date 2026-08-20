@@ -5,6 +5,8 @@ import { useParams, useRouter } from "next/navigation";
 import { Crown } from "lucide-react";
 
 import { SeatBadge } from "@/components/SeatBadge";
+import { EmoteOverlay } from "@/components/EmoteOverlay";
+import { EmotePicker } from "@/components/EmotePicker";
 import { KickPanel } from "@/components/KickPanel";
 import { Button } from "@/components/ui/Button";
 import type { Seat } from "@/lib/game/types";
@@ -174,13 +176,18 @@ export default function RoomPage() {
             <div key={seat} className={`absolute ${POS[seat]}`}>
               <div className="flex flex-col items-center gap-1">
                 {rec ? (
-                  <SeatBadge
-                    seat={seat}
-                    username={rec.username}
-                    isMe={session ? rec.id === session.seatId : false}
-                    ready={rec.ready}
-                    crown={seat === "N" && room?.mode === "four"}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <SeatBadge
+                      seat={seat}
+                      username={rec.username}
+                      isMe={session ? rec.id === session.seatId : false}
+                      ready={rec.ready}
+                      crown={seat === "N" && room?.mode === "four"}
+                    />
+                    {session && rec.id === session.seatId && (
+                      <EmotePicker />
+                    )}
+                  </div>
                 ) : session && room?.mode !== "pairs" ? (
                   <button
                     type="button"
@@ -250,6 +257,8 @@ export default function RoomPage() {
               : "Game in progress"}
           </span>
         </div>
+
+        <EmoteOverlay positions={POS} />
       </div>
 
       <section className="flex w-full max-w-lg flex-col gap-4">

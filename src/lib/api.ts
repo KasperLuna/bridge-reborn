@@ -96,6 +96,16 @@ export function castKickVote(
   });
 }
 
+export function sendEmote(
+  session: Session,
+  emote: string,
+): Promise<{ ok: true }> {
+  return post(`/api/rooms/${session.code}/emote`, {
+    ...session,
+    emote,
+  }).then(() => ({ ok: true as const }));
+}
+
 export function setReady(
   session: Session,
   ready: boolean,

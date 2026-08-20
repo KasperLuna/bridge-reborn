@@ -29,6 +29,7 @@ type RoomState = {
     password?: string,
   ) => Promise<void>;
   start: () => Promise<void>;
+  sendEmote: (emote: string) => Promise<void>;
   startKick: (targetUsername: string) => Promise<void>;
   castKickVote: (voteId: string, yes: boolean) => Promise<void>;
   addBot: (seat?: Seat) => Promise<void>;
@@ -86,6 +87,10 @@ export const useRoomStore = create<RoomState>((set) => ({
 
   start: async () => {
     await api.startGame(requireSession());
+  },
+
+  sendEmote: async (emote) => {
+    await api.sendEmote(requireSession(), emote);
   },
 
   startKick: async (targetUsername) => {

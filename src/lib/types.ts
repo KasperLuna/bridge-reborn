@@ -39,6 +39,8 @@ export type RoomSeat = {
   is_bot: boolean;
   ready: boolean;
   joined_at: string;
+  last_emote: string;
+  emote_at: string;
   created: string;
   updated: string;
 };
