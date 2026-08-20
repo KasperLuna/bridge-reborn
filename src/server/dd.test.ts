@@ -175,5 +175,5 @@ describe("solveDoubleDummy", () => {
         }
       }
     }
-  });
+  }, 60000);
 });

@@ -123,7 +123,11 @@ export async function solveDoubleDummy(
     const dealPtr = mod.allocateUTF8(dealToPbn(dealt));
     const resultPtr = mod._malloc(13 * INTS_PER_RESULT * BYTES_PER_INT);
     for (let i = 0; i < 13; i++) {
-      mod.setValue(resultPtr + i * BYTES_PER_INT, -1, "i32");
+      mod.setValue(
+        resultPtr + i * INTS_PER_RESULT * BYTES_PER_INT,
+        -1,
+        "i32",
+      );
     }
 
     const trump = strain === "NT" ? 4 : SUIT_TO_DDS[strain]!;
