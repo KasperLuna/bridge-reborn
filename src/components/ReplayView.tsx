@@ -360,7 +360,7 @@ export function ReplayView({
                 <span className="rounded-md bg-cream/5 px-2 py-0.5 text-sm font-semibold text-cream">
                   {lastEvent
                     ? `${lastEvent.seat ? `${lastEvent.seat}: ` : ""}${lastEvent.label}`
-                    : "—"}
+                    : "–"}
                 </span>
               </div>
             </div>

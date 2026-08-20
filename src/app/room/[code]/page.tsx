@@ -353,7 +353,7 @@ export default function RoomPage() {
                       Waiting for opponent
                     </p>
                     <p className="mt-0.5 text-sm text-cream">
-                      Share code {code} — they take the opposite side.
+                      Share code {code}, they take the opposite side.
                     </p>
                   </div>
                 ) : (
@@ -499,7 +499,7 @@ export default function RoomPage() {
                     disabled={busy}
                     onClick={() => void run(() => claim(null))}
                   >
-                    Spectate — give up your seat
+                    Spectate, give up your seat
                   </Button>
                 </div>
               )}

@@ -127,7 +127,7 @@ export default function Home() {
               Bridge
             </h1>
             <p className="mt-3 text-cream-dim">
-              Real-time Bridge &amp; Bid Whist. No accounts — just a name and a
+              Real-time Bridge &amp; Bid Whist. No accounts, just a name and a
               table.
             </p>
           </div>
@@ -204,7 +204,7 @@ export default function Home() {
               )}
               {roomStatus === "missing" && (
                 <p className="text-xs text-cream-dim">
-                  No room with that code — leave blank to create
+                  No room with that code, leave blank to create
                 </p>
               )}
               {roomStatus === "private" && (

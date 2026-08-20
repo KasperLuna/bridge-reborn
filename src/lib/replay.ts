@@ -102,7 +102,7 @@ export function countEvents(bids: BidRecord[], plays: PlayRecord[]): number {
 
 /**
  * Tricks whose four plays are all present in the (truncated) plays list. The
- * in-progress trick is left out — the caller re-adds it as the open trick.
+ * in-progress trick is left out; the caller re-adds it as the open trick.
  */
 export function visibleTricks(
   tricks: TrickRecord[],

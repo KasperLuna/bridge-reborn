@@ -23,7 +23,7 @@ export function markOnboardingSeen(): void {
   try {
     window.localStorage.setItem(SEEN_KEY, "1");
   } catch {
-    // ignore — private mode etc.
+    // ignore, e.g. private mode
   }
 }
 
@@ -118,7 +118,7 @@ function TrickVisual() {
         </div>
       </div>
       <p className="text-xs text-cream-dim">
-        <span className="font-semibold text-suit-red">♥ led</span> — follow
+        <span className="font-semibold text-suit-red">♥ led</span>: follow
         suit, or beat with{" "}
         <span className="font-semibold text-suit-black">♠</span>
       </p>
@@ -165,12 +165,12 @@ const STEPS: {
   },
   {
     title: "The auction",
-    body: "After the deal, players bid — level plus strain, like “▲ 3 NT” (uptown: high cards win) or “▼ 2 S” (downtown: low cards win). The final bid wins the contract, and that side must make it.",
+    body: "After the deal, players bid: level plus strain, like “▲ 3 NT” (uptown: high cards win) or “▼ 2 S” (downtown: low cards win). The final bid wins the contract, and that side must make it.",
     visual: AuctionVisual,
   },
   {
     title: "The play",
-    body: "Follow the led suit if you can. If not, play anything — a trump card beats the rest. ▲ Uptown: the highest card wins each trick. ▼ Downtown: the lowest card wins instead.",
+    body: "Follow the led suit if you can. If not, play anything; a trump card beats the rest. ▲ Uptown: the highest card wins each trick. ▼ Downtown: the lowest card wins instead.",
     visual: TrickVisual,
   },
   {

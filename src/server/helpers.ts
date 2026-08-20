@@ -154,7 +154,7 @@ export async function kickBotSeat(
 }
 
 /** Reset every seated human's ready flag (used when a hand ends). Bots stay
-    ready — they have no session to toggle it. */
+    ready; they have no session to toggle it. */
 export async function unreadyRoomPlayers(
   pb: PocketBase,
   roomId: string,

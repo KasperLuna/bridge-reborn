@@ -45,7 +45,7 @@ Open http://localhost:3000.
   single validation point and writes via an admin PocketBase client
   (`src/server/pb.ts`). Clients only read + subscribe.
 - Pure game logic lives in `src/lib/game` (cards, bidding, trick, scoring,
-  seats) with no PocketBase imports — shared by server and client.
+  seats) with no PocketBase imports, shared by server and client.
 - Zustand stores (`src/store`) hold client state; realtime wiring lives in
   `src/hooks/useGameSync.ts` and `src/hooks/useRoomSync.ts`.
 - PocketBase schema is `pb_schema.json` (9 collections).

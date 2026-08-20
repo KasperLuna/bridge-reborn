@@ -173,7 +173,7 @@ export function TrickArea({
       {SEATS.map((seat) => {
         const card = bySeat.get(seat);
         const target = flyTo?.[seat];
-        // Trump cards played in the trick get a halo that scales with rank —
+        // Trump cards played in the trick get a halo that scales with rank:
         // higher trump outshines lower.
         const isTrump =
           !!card && trumpSuit !== null && cardSuit(card) === trumpSuit;
@@ -261,7 +261,7 @@ export function TrickArea({
 
 /** Ring that runs out over 7s while the won trick's cards are collected.
     Kept small so it clears the nearest card edges on the tightest (sm) slot
-    geometry — top/bottom card edges sit ~16px from center. */
+    geometry: top/bottom card edges sit ~16px from center. */
 function CountdownRing() {
   const r = 10;
   const c = 2 * Math.PI * r;

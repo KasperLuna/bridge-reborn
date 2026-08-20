@@ -69,7 +69,7 @@ export type HandEndArgs = {
   declarerTricks: number;
 };
 
-/** SPEC §7.5 — bridge plays all 13; bid whist stops when outcome is decided.
+/** SPEC §7.5: bridge plays all 13; bid whist stops when outcome is decided.
     Downtown flips card ranking only (low cards win), never the trick target:
     the bid number is books above six in both directions. */
 export function isHandOver(args: HandEndArgs): boolean {

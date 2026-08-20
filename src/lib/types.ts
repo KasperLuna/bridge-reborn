@@ -91,7 +91,7 @@ export type ContractRecord = {
   id: string;
   hand_id: string;
   declarer_username: string;
-  /** The declarer's seat (explicit — usernames can own two seats in pairs mode). */
+  /** The declarer's seat (explicit, as usernames can own two seats in pairs mode). */
   declarer_seat: Seat;
   level: string;
   strain: Strain;
@@ -107,7 +107,7 @@ export type TrickRecord = {
   hand_id: string;
   trick_number: number;
   leader_username: string;
-  /** The seat that led this trick (explicit — usernames own two seats in pairs). */
+  /** The seat that led this trick (explicit, as usernames own two seats in pairs). */
   leader_seat: Seat;
   winner_username: string;
   /** The seat that won this trick (explicit, so the next leader is exact). */
@@ -121,7 +121,7 @@ export type PlayRecord = {
   trick_id: string;
   hand_id: string;
   username: string;
-  /** The seat that played (explicit — usernames own two seats in pairs). */
+  /** The seat that played (explicit, as usernames own two seats in pairs). */
   seat: Seat;
   play_sequence: number;
   card: string;

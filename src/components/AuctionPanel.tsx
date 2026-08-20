@@ -221,8 +221,8 @@ export function AuctionPanel({
           </div>
           <p className="mt-1 text-center text-[11px] text-cream-dim/70">
             {low
-              ? "▼ Downtown — low cards win; smaller bid outranks"
-              : "▲ Uptown — high cards win; bigger bid outranks"}
+              ? "▼ Downtown: low cards win; smaller bid outranks"
+              : "▲ Uptown: high cards win; bigger bid outranks"}
           </p>
         </div>
 

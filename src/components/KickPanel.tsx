@@ -122,7 +122,7 @@ export function KickDialog({ onClose }: { onClose: () => void }) {
                     onClose();
                   }}
                 >
-                  Yes — kick
+                  Yes, kick
                 </Button>
                 <Button
                   variant="ghost"
@@ -131,7 +131,7 @@ export function KickDialog({ onClose }: { onClose: () => void }) {
                     onClose();
                   }}
                 >
-                  No — keep
+                  No, keep
                 </Button>
               </div>
             ) : (

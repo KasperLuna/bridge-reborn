@@ -442,7 +442,7 @@ export default function GamePage() {
     mySeatData.find((d) => d.seat === seat)?.seatId;
 
   // Show the open trick, or the most recent won trick while it's being
-  // collected (flip/fly under the winner) — the middle clears after 7s.
+  // collected (flip/fly under the winner); the middle clears after 7s.
   const openTrick = currentTrick(tricks);
   const displayTrick =
     openTrick ??
@@ -644,7 +644,7 @@ export default function GamePage() {
     void play(card, seatId);
   }
 
-  // The hands render twice — side column on lg+, footer on phones — so the
+  // The hands render twice, side column on lg+ and footer on phones, so the
   // plain querySelector can grab the display:none copy (rect reads as 0,0).
   const visibleEl = (sel: string) =>
     [...document.querySelectorAll<HTMLElement>(sel)].find(
@@ -865,7 +865,7 @@ export default function GamePage() {
 
             {/* The bid panel sits centered in the felt (between the badge strips). One
               overlay across breakpoints so the panel is a single component
-              instance — staging state stays in sync while resizing. */}
+              instance, so staging state stays in sync while resizing. */}
             {phase === "auction" && auctionPanel && (
               <div className="absolute inset-0 z-10 flex items-center justify-center px-3 py-14">
                 {auctionPanel}

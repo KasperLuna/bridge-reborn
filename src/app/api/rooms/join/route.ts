@@ -87,7 +87,7 @@ export async function POST(req: Request) {
         });
       return NextResponse.json(toSession(updated, room));
     } catch {
-      // no existing record — fall through to create
+      // no existing record, fall through to create
     }
 
     // Pairs mode: a newcomer takes the free partnership (two seats), or

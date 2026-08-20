@@ -48,7 +48,7 @@ const STRAIN_RANK: Record<Strain, number> = { C: 1, D: 2, H: 3, S: 4, NT: 5 };
 export const MAX_BID_VALUE = 7 * 10 + STRAIN_RANK.NT; // 7NT = 75
 
 /** Auction strength of a bid. High: bigger level/strain outranks. Low: the
-    negative — a smaller level/strain outranks. */
+    negative; a smaller level/strain outranks. */
 export function bidValue(
   level: number,
   strain: Strain,
