@@ -2,15 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { PlayingCard } from "@/components/PlayingCard";
-import { SeatBadge } from "@/components/SeatBadge";
-import {
-  TrickArea,
-  type TableDir,
-  useTrickCardSize,
-} from "@/components/TrickArea";
+import { AuctionStrip } from "@/components/auction-strip";
+import { PlayingCard } from "@/components/playing-card";
+import { SeatBadge } from "@/components/seat-badge";
+import { TrickArea, type TableDir } from "@/components/trick-area";
 import { Button } from "@/components/ui/Button";
-import { formatCall } from "@/lib/game/bidding";
+import { useTrickCardSize } from "@/hooks/use-trick-card-size";
 import { fetchGameBundle, type GameBundle } from "@/lib/gameBundle";
 import { partnershipOf, seatOfUsername } from "@/lib/game/seats";
 import type { Seat } from "@/lib/game/types";
@@ -40,43 +37,48 @@ type HandTimeline = {
   events: ReplayEvent[];
 };
 
-/**
- * Whole-game replay. Events across all hands are flattened into one timeline
- * (bids then plays per hand); the scrubber index truncates the current hand's
- * records and feeds the existing selectors to render that moment.
- */
-export function ReplayView({
-  open,
-  onClose,
-  roomId,
-}: {
-  open: boolean;
+const DIRS: Record<Seat, TableDir> = SEATS.reduce(
+  (acc, s) => {
+    acc[s] = seatDir(s, null);
+    return acc;
+  },
+  {} as Record<Seat, TableDir>,
+);
+
+interface ReplayViewProps {
+  isOpen: boolean;
   onClose: () => void;
   roomId: string;
-}) {
+}
+
+export const ReplayView = ({ isOpen, onClose, roomId }: ReplayViewProps) => {
   const [bundle, setBundle] = useState<GameBundle | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!isOpen) return;
     let disposed = false;
     setBundle(null);
+    setError(null);
     setIndex(0);
     setPlaying(false);
     fetchGameBundle(roomId)
       .then((b) => {
         if (!disposed) setBundle(b);
       })
-      .catch(() => {
-        if (!disposed) setBundle(null);
+      .catch((err: unknown) => {
+        if (disposed) return;
+        setBundle(null);
+        setError(err instanceof Error ? err.message : "Failed to load replay");
       });
     return () => {
       disposed = true;
     };
-  }, [open, roomId]);
+  }, [isOpen, roomId]);
 
-  const timeline = useMemo(() => {
+  const timeline: HandTimeline[] = useMemo(() => {
     if (!bundle?.hand) return [];
     const p = players(bundle.hand);
     const events = buildHandEvents(
@@ -97,14 +99,11 @@ export function ReplayView({
     ];
   }, [bundle]);
 
-  const total = useMemo(
-    () => timeline.reduce((s, t) => s + t.count, 0),
-    [timeline],
-  );
+  const total = timeline.reduce((s, t) => s + t.count, 0);
 
   // Auto-advance one step at a time while playing; stop at the end.
   useEffect(() => {
-    if (!open || !playing) return;
+    if (!isOpen || !playing) return;
     if (index >= total) {
       setPlaying(false);
       return;
@@ -114,11 +113,11 @@ export function ReplayView({
       PLAY_MS,
     );
     return () => clearTimeout(t);
-  }, [open, playing, index, total]);
+  }, [isOpen, playing, index, total]);
 
   // The hand whose event range contains the global index. A global index equal
   // to a hand's end stays on that hand (its local index == count → result view).
-  const current = useMemo<{ tl: HandTimeline; local: number } | null>(() => {
+  const current: { tl: HandTimeline; local: number } | null = (() => {
     const i = Math.max(0, Math.min(index, total));
     for (const t of timeline) {
       if (i <= t.start + t.count) {
@@ -127,9 +126,9 @@ export function ReplayView({
     }
     const last = timeline[timeline.length - 1];
     return last ? { tl: last, local: last.count } : null;
-  }, [index, total, timeline]);
+  })();
 
-  const lastEvent = useMemo(() => {
+  const lastEvent = (() => {
     if (index === 0) return null;
     const offset = index - 1;
     for (const t of timeline) {
@@ -138,7 +137,7 @@ export function ReplayView({
       }
     }
     return null;
-  }, [index, timeline]);
+  })();
 
   const state = useMemo(() => {
     if (!current || !bundle?.hand) return null;
@@ -194,24 +193,12 @@ export function ReplayView({
     };
   }, [current, bundle]);
 
-  const dirs = useMemo(
-    () =>
-      SEATS.reduce(
-        (acc, s) => {
-          acc[s] = seatDir(s, null);
-          return acc;
-        },
-        {} as Record<Seat, TableDir>,
-      ),
-    [],
-  );
-
   // Replay packs the trick tighter than the live table: cap at md so the cards
   // bunch toward the center instead of running to the felt edge.
   const viewportSize = useTrickCardSize();
   const trickSize = viewportSize === "lg" ? "md" : viewportSize;
 
-  if (!open) return null;
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-ink/95 backdrop-blur-sm">
@@ -233,7 +220,14 @@ export function ReplayView({
         </Button>
       </header>
 
-      {!state ? (
+      {error ? (
+        <div className="grid flex-1 place-items-center text-cream-dim">
+          <div className="text-center">
+            <p>Replay failed to load</p>
+            <p className="mt-1 text-xs text-danger">{error}</p>
+          </div>
+        </div>
+      ) : !state ? (
         <div className="grid flex-1 place-items-center text-cream-dim">
           {bundle ? "No game yet" : "Loading replay…"}
         </div>
@@ -257,7 +251,7 @@ export function ReplayView({
                   <TrickArea
                     cards={state.trickCards}
                     winner={null}
-                    positions={dirs}
+                    positions={DIRS}
                     trumpSuit={state.trumpSuit}
                     size={trickSize}
                   />
@@ -309,7 +303,7 @@ export function ReplayView({
                       key={card}
                       card={card}
                       size="xs"
-                      playable={false}
+                      isPlayable={false}
                     />
                   ))}
                 </div>
@@ -369,45 +363,4 @@ export function ReplayView({
       )}
     </div>
   );
-}
-
-/** Compact history of the auction so far, styled like the live auction chips. */
-function AuctionStrip({
-  entries,
-}: {
-  entries: { call: string; username: string; side: "NS" | "EW" }[];
-}) {
-  if (entries.length === 0) {
-    return (
-      <div className="rounded-2xl border border-cream/10 bg-felt-deep/70 p-5 text-center backdrop-blur">
-        <p className="font-display text-lg text-cream">Auction opens</p>
-        <p className="mt-1 text-xs tracking-[0.3em] text-cream-dim/60 uppercase">
-          no bids yet
-        </p>
-      </div>
-    );
-  }
-  return (
-    <div className="max-h-full w-full max-w-md overflow-y-auto rounded-2xl border border-cream/10 bg-felt-deep/70 p-4 backdrop-blur">
-      <div className="flex flex-wrap items-center justify-center gap-1.5">
-        {entries.map((e, i) => (
-          <span
-            key={i}
-            className={`rounded-md px-2 py-0.5 text-base font-semibold ${
-              e.call === "P"
-                ? "bg-cream/5 text-cream-dim"
-                : e.call === "X" || e.call === "XX"
-                  ? "bg-danger/15 text-danger"
-                  : "bg-lime/15 text-lime"
-            }`}
-          >
-            {formatCall(e.call)}
-            <span className="ml-1 max-w-16 truncate text-[10px] opacity-60">
-              {e.username}
-            </span>
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
+};

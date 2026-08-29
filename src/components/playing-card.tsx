@@ -1,5 +1,6 @@
-"use client";
+import { cva, type VariantProps } from "class-variance-authority";
 
+import { cn } from "@/lib/utils";
 import { cardRank, cardSuit, displayRank } from "@/lib/game/cards";
 import type { Card } from "@/lib/game/types";
 
@@ -10,35 +11,43 @@ const GLYPHS: Record<string, string> = {
   C: "♣",
 };
 
-const SIZES = {
-  xs: "h-9 w-6 rounded-md text-[9px]",
-  sm: "h-16 w-11 rounded-lg text-sm",
-  md: "h-24 w-16 rounded-xl text-base",
-  lg: "h-32 w-22 rounded-2xl text-lg",
-  xl: "h-40 w-28 rounded-2xl text-xl",
-} as const;
+const cardSizes = cva("", {
+  variants: {
+    size: {
+      xs: "h-9 w-6 rounded-md text-[9px]",
+      sm: "h-16 w-11 rounded-lg text-sm",
+      md: "h-24 w-16 rounded-xl text-base",
+      lg: "h-32 w-22 rounded-2xl text-lg",
+      xl: "h-40 w-28 rounded-2xl text-xl",
+    },
+  },
+  defaultVariants: { size: "md" },
+});
 
-export function PlayingCard({
+interface PlayingCardProps extends VariantProps<typeof cardSizes> {
+  card: Card;
+  isFaceDown?: boolean;
+  isPlayable?: boolean;
+  isDimmed?: boolean;
+  isTrump?: boolean;
+  onClick?: () => void;
+}
+
+export const PlayingCard = ({
   card,
-  faceDown = false,
-  playable = true,
-  dimmed = false,
-  trump = false,
+  isFaceDown = false,
+  isPlayable = true,
+  isDimmed = false,
+  isTrump = false,
   size = "md",
   onClick,
-}: {
-  card: Card;
-  faceDown?: boolean;
-  playable?: boolean;
-  dimmed?: boolean;
-  trump?: boolean;
-  size?: keyof typeof SIZES;
-  onClick?: () => void;
-}) {
-  if (faceDown) {
+}: PlayingCardProps) => {
+  const sizeClass = cardSizes({ size });
+
+  if (isFaceDown) {
     return (
       <div
-        className={`card-back ${SIZES[size]} shadow-[0_10px_24px_-6px_rgba(0,0,0,0.55)] select-none`}
+        className={`card-back ${sizeClass} shadow-[0_10px_24px_-6px_rgba(0,0,0,0.55)] select-none`}
       />
     );
   }
@@ -48,7 +57,7 @@ export function PlayingCard({
   const red = suit === "H" || suit === "D";
   const color = red ? "text-suit-red" : "text-suit-black";
   const interactive =
-    playable && onClick
+    isPlayable && onClick
       ? "cursor-pointer focus-visible:outline-2 focus-visible:outline-lime"
       : "cursor-default";
 
@@ -57,7 +66,12 @@ export function PlayingCard({
       <button
         type="button"
         aria-label={card}
-        className={`${SIZES.xs} relative bg-cream p-0.5 shadow ${color} cursor-default`}
+        className={cn(
+          sizeClass,
+          "relative bg-cream p-0.5 shadow",
+          color,
+          "cursor-default",
+        )}
       >
         <span className="absolute top-0 left-0.5 text-[9px] leading-none font-bold">
           {rank}
@@ -74,9 +88,16 @@ export function PlayingCard({
       <button
         type="button"
         onClick={onClick}
-        disabled={!playable || !onClick}
+        disabled={!isPlayable || !onClick}
         aria-label={`Play ${card}`}
-        className={`${SIZES[size]} relative overflow-hidden bg-cream p-0.5 shadow-[0_10px_24px_-6px_rgba(0,0,0,0.55)] transition-all ${color} ${interactive} ${dimmed ? "brightness-90 saturate-[0.5]" : ""}`}
+        className={cn(
+          sizeClass,
+          "relative overflow-hidden bg-cream p-0.5",
+          "shadow-[0_10px_24px_-6px_rgba(0,0,0,0.55)] transition-all",
+          color,
+          interactive,
+          isDimmed && "brightness-90 saturate-[0.5]",
+        )}
       >
         <span className="absolute top-0.5 left-1 flex flex-col items-start leading-none">
           <span className="font-bold">{rank}</span>
@@ -85,7 +106,7 @@ export function PlayingCard({
         <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl leading-none">
           {GLYPHS[suit]}
         </span>
-        {trump && (
+        {isTrump && (
           <span
             aria-hidden="true"
             className="card-shimmer pointer-events-none absolute top-0 bottom-0 left-[-50%] w-[200%]"
@@ -99,9 +120,16 @@ export function PlayingCard({
     <button
       type="button"
       onClick={onClick}
-      disabled={!playable || !onClick}
+      disabled={!isPlayable || !onClick}
       aria-label={`Play ${card}`}
-      className={`${SIZES[size]} relative flex flex-col justify-between overflow-hidden bg-cream p-1 shadow-[0_10px_24px_-6px_rgba(0,0,0,0.55)] transition-all ${color} ${interactive} ${dimmed ? "brightness-90 saturate-[0.5]" : ""}`}
+      className={cn(
+        sizeClass,
+        "relative flex flex-col justify-between overflow-hidden bg-cream p-1",
+        "shadow-[0_10px_24px_-6px_rgba(0,0,0,0.55)] transition-all",
+        color,
+        interactive,
+        isDimmed && "brightness-90 saturate-[0.5]",
+      )}
     >
       <span className="flex flex-col items-start pl-0.5 leading-none">
         <span className="font-bold">{rank}</span>
@@ -114,7 +142,7 @@ export function PlayingCard({
         <span className="font-bold">{rank}</span>
         <span className="text-[0.9em]">{GLYPHS[suit]}</span>
       </span>
-      {trump && (
+      {isTrump && (
         <span
           aria-hidden="true"
           className="card-shimmer pointer-events-none absolute top-0 bottom-0 left-[-50%] w-[200%]"
@@ -122,4 +150,4 @@ export function PlayingCard({
       )}
     </button>
   );
-}
+};

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Bell, Volume2 } from "lucide-react";
 
-import { PlayingCard } from "./PlayingCard";
+import { PlayingCard } from "./playing-card";
 import { Button } from "./ui/Button";
 
 const SEEN_KEY = "bridge.onboarding.seen";
@@ -77,7 +77,7 @@ function AuctionVisual() {
       <div className="flex">
         {["AS", "6H", "10D", "QC"].map((card, i) => (
           <div key={card} style={{ marginLeft: i === 0 ? 0 : -18 }}>
-            <PlayingCard card={card} size="sm" playable={false} />
+            <PlayingCard card={card} size="sm" isPlayable={false} />
           </div>
         ))}
       </div>
@@ -103,11 +103,11 @@ function TrickVisual() {
   return (
     <div className="mx-auto flex w-full max-w-xs flex-col items-center gap-3">
       <div className="relative grid grid-cols-2 gap-2">
-        <PlayingCard card="7H" size="sm" playable={false} />
-        <PlayingCard card="KH" size="sm" playable={false} />
-        <PlayingCard card="2H" size="sm" playable={false} />
+        <PlayingCard card="7H" size="sm" isPlayable={false} />
+        <PlayingCard card="KH" size="sm" isPlayable={false} />
+        <PlayingCard card="2H" size="sm" isPlayable={false} />
         <div className="relative">
-          <PlayingCard card="AS" size="sm" playable={false} trump />
+          <PlayingCard card="AS" size="sm" isPlayable={false} isTrump />
           <motion.span
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}

@@ -5,30 +5,31 @@ import { useParams, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Eye, Settings } from "lucide-react";
 
-import { AuctionChips, AuctionPanel } from "@/components/AuctionPanel";
-import { EmoteOverlay } from "@/components/EmoteOverlay";
-import { EmotePicker } from "@/components/EmotePicker";
-import { Hand } from "@/components/Hand";
-import { KickDialog } from "@/components/KickPanel";
+import { AuctionChips } from "@/components/auction-chips";
+import { AuctionPanel } from "@/components/auction-panel";
+import { EmoteOverlay } from "@/components/emote-overlay";
+import { EmotePicker } from "@/components/emote-picker";
+import { Hand } from "@/components/hand";
+import { KickDialog } from "@/components/kick-panel";
 import {
   markOnboardingSeen,
   OnboardingModal,
   onboardingSeen,
-} from "@/components/OnboardingModal";
-import { PlayingCard } from "@/components/PlayingCard";
-import { ReplayView } from "@/components/ReplayView";
-import { Scoreboard } from "@/components/Scoreboard";
-import { SeatBadge } from "@/components/SeatBadge";
+} from "@/components/onboarding-modal";
+import { PlayingCard } from "@/components/playing-card";
+import { ReplayView } from "@/components/replay-view";
+import { Scoreboard } from "@/components/scoreboard";
+import { SeatBadge } from "@/components/seat-badge";
 import {
   TrickArea,
   type TableDir,
   type TrickEff,
   useTrickCardSize,
-} from "@/components/TrickArea";
+} from "@/components/trick-area";
 import { Button } from "@/components/ui/Button";
-import { useGameSync } from "@/hooks/useGameSync";
-import { useRoomSync } from "@/hooks/useRoomSync";
-import { useTurnAlerts } from "@/hooks/useTurnAlerts";
+import { useGameSync } from "@/hooks/use-game-sync";
+import { useRoomSync } from "@/hooks/use-room-sync";
+import { useTurnAlerts } from "./use-turn-alerts";
 import { formatCall } from "@/lib/game/bidding";
 import { sortHand, sortHandByRank } from "@/lib/game/cards";
 import { endOfHandTag } from "@/lib/game/scoring";
@@ -432,8 +433,8 @@ export default function GamePage() {
         entries={auction}
         legal={activeBidSeat.bidInfo}
         mySide={partnershipOf(activeBidSeat.seat)}
-        myTurn
-        disabled={pending}
+        isMyTurn
+        isDisabled={pending}
         onCall={(call) => void bid(call, activeBidSeat.seatId)}
       />
     ) : null;
@@ -551,7 +552,7 @@ export default function GamePage() {
           trumpSuit={trumpSuit}
           staged={staged?.seat === d.seat ? staged.card : null}
           hiddenCards={d.hidden}
-          hoverable={phase === "auction" && active}
+          isHoverable={phase === "auction" && active}
           onPlay={
             phase === "play" && active
               ? (c) => handleCardClick(c, d.seat)
@@ -845,8 +846,8 @@ export default function GamePage() {
                     <SeatBadge
                       seat={seat}
                       username={rec?.username ?? p[seat] ?? null}
-                      active={activeSeat === seat}
-                      winner={winnerSeat === seat}
+                      isActive={activeSeat === seat}
+                      isWinner={winnerSeat === seat}
                       isMe={mine}
                     />
                     {mine && !session.isSpectator && <EmotePicker />}
@@ -971,7 +972,7 @@ export default function GamePage() {
                           key={card}
                           card={card}
                           size="xs"
-                          playable={false}
+                          isPlayable={false}
                         />
                       ))}
                     </div>
@@ -1027,7 +1028,7 @@ export default function GamePage() {
                               key={card}
                               card={card}
                               size="sm"
-                              playable={false}
+                              isPlayable={false}
                             />
                           ))}
                         </div>
@@ -1091,7 +1092,7 @@ export default function GamePage() {
       )}
 
       <ReplayView
-        open={showReplay}
+        isOpen={showReplay}
         onClose={() => setShowReplay(false)}
         roomId={session.roomId}
       />
@@ -1319,7 +1320,7 @@ function HandOverOverlay({
                         key={card}
                         card={card}
                         size="xs"
-                        playable={false}
+                        isPlayable={false}
                       />
                     ))}
                   </div>

@@ -1,4 +1,4 @@
-import type { TableDir } from "@/components/TrickArea";
+import type { TableDir } from "@/components/trick-area";
 import type { Seat } from "@/lib/game/types";
 
 export const SEATS: Seat[] = ["N", "E", "S", "W"];

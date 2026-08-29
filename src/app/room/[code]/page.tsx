@@ -4,10 +4,10 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Crown } from "lucide-react";
 
-import { SeatBadge } from "@/components/SeatBadge";
-import { EmoteOverlay } from "@/components/EmoteOverlay";
-import { EmotePicker } from "@/components/EmotePicker";
-import { KickPanel } from "@/components/KickPanel";
+import { SeatBadge } from "@/components/seat-badge";
+import { EmoteOverlay } from "@/components/emote-overlay";
+import { EmotePicker } from "@/components/emote-picker";
+import { KickPanel } from "@/components/kick-panel";
 import { Button } from "@/components/ui/Button";
 import type { Seat } from "@/lib/game/types";
 import { pb } from "@/lib/pb";
@@ -23,7 +23,7 @@ import {
   spectators,
 } from "@/store/selectors";
 
-import { useRoomSync } from "@/hooks/useRoomSync";
+import { useRoomSync } from "@/hooks/use-room-sync";
 
 const SEATS: Seat[] = ["N", "E", "S", "W"];
 const POS: Record<Seat, string> = {
@@ -185,8 +185,8 @@ export default function RoomPage() {
                       seat={seat}
                       username={rec.username}
                       isMe={session ? rec.id === session.seatId : false}
-                      ready={rec.ready}
-                      crown={seat === "N" && room?.mode === "four"}
+                      isReady={rec.ready}
+                      isCrown={seat === "N" && room?.mode === "four"}
                     />
                     {session && rec.id === session.seatId && (
                       <EmotePicker />

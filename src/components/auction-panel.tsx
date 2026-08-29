@@ -11,55 +11,22 @@ import {
   passNeed,
 } from "@/lib/game/bidding";
 import type { Partnership, Strain } from "@/lib/game/types";
+import { cn } from "@/lib/utils";
 
+import { AuctionChips } from "./auction-chips";
+import type { AuctionEntryView } from "./auction-chips";
 import { Button } from "./ui/Button";
 
 const LEVELS = [1, 2, 3, 4, 5, 6, 7] as const;
 const STRAINS: Strain[] = ["C", "D", "H", "S", "NT"];
 
-export type AuctionEntryView = {
-  call: string;
-  side: "NS" | "EW";
-  username: string;
-};
-
-/** Read-only chips of recent calls, shared by the live panel and the
-    not-my-turn waiting view. */
-export function AuctionChips({ entries }: { entries: AuctionEntryView[] }) {
-  const lastEntries = entries.slice(-6);
-  if (lastEntries.length === 0) {
-    return (
-      <span className="text-sm text-cream-dim/50">Auction opens here</span>
-    );
-  }
-  return (
-    <>
-      {lastEntries.map((e, i) => {
-        // Older calls are stale context; the last few carry the current read,
-        // so keep only them at full weight and with their usernames.
-        const recent = i >= lastEntries.length - 3;
-        return (
-          <span
-            key={i}
-            className={`rounded-md px-2 py-0.5 text-base font-semibold ${
-              e.call === "P"
-                ? "bg-cream/5 text-cream-dim"
-                : e.call === "X" || e.call === "XX"
-                  ? "bg-danger/15 text-danger"
-                  : "bg-lime/15 text-lime"
-            } ${recent ? "" : "opacity-50"}`}
-          >
-            {formatCall(e.call)}
-            {recent && (
-              <span className="ml-1 max-w-16 truncate text-[10px] opacity-60">
-                {e.username}
-              </span>
-            )}
-          </span>
-        );
-      })}
-    </>
-  );
+interface AuctionPanelProps {
+  entries: AuctionEntryView[];
+  legal: LegalCalls;
+  mySide: Partnership;
+  isMyTurn: boolean;
+  isDisabled: boolean;
+  onCall: (call: string) => void;
 }
 
 /** Confirm-row wording for a staged call. */
@@ -77,31 +44,20 @@ function bidConfirm(call: string): string {
   return "Bid";
 }
 
-export function AuctionPanel({
+export const AuctionPanel = ({
   entries,
   legal,
   mySide,
-  myTurn,
-  disabled,
+  isMyTurn,
+  isDisabled,
   onCall,
-}: {
-  entries: AuctionEntryView[];
-  legal: LegalCalls;
-  mySide: Partnership;
-  myTurn: boolean;
-  disabled: boolean;
-  onCall: (call: string) => void;
-}) {
+}: AuctionPanelProps) => {
   const [staged, setStaged] = useState<string | null>(null);
   const [low, setLow] = useState(false);
   const stagedCall = staged !== null ? parseAuctionCall(staged) : null;
   const stagedLevel = stagedCall?.kind === "bid" ? stagedCall.level : null;
   const passNeedInfo = staged === "P" ? passNeed(entries, mySide) : null;
-  const locked = disabled || !myTurn;
-  const selected = (call: string) =>
-    staged === call
-      ? "border-lime/60 bg-lime/15 text-lime"
-      : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime";
+  const locked = isDisabled || !isMyTurn;
   // Compact on tiny screens so the action row keeps its height budget; the
   // important prefix beats Button's fixed min-h/px at the base breakpoint.
   const actionTile =
@@ -170,7 +126,12 @@ export function AuctionPanel({
       <div className="flex shrink-0 gap-2">
         <Button
           variant="ghost"
-          className={`${actionTile} ${selected("P")}`}
+          className={cn(
+            actionTile,
+            staged === "P"
+              ? "border-lime/60 bg-lime/15 text-lime"
+              : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime",
+          )}
           disabled={locked || !legal.canPass}
           onClick={() => setStaged((cur) => (cur === "P" ? null : "P"))}
         >
@@ -178,7 +139,12 @@ export function AuctionPanel({
         </Button>
         <Button
           variant="ghost"
-          className={`${actionTile} ${selected("X")}`}
+          className={cn(
+            actionTile,
+            staged === "X"
+              ? "border-lime/60 bg-lime/15 text-lime"
+              : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime",
+          )}
           disabled={locked || !legal.canDouble}
           onClick={() => setStaged((cur) => (cur === "X" ? null : "X"))}
         >
@@ -186,7 +152,12 @@ export function AuctionPanel({
         </Button>
         <Button
           variant="ghost"
-          className={`${actionTile} ${selected("XX")}`}
+          className={cn(
+            actionTile,
+            staged === "XX"
+              ? "border-lime/60 bg-lime/15 text-lime"
+              : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime",
+          )}
           disabled={locked || !legal.canRedouble}
           onClick={() => setStaged((cur) => (cur === "XX" ? null : "XX"))}
         >
@@ -208,11 +179,12 @@ export function AuctionPanel({
                   type="button"
                   disabled={locked}
                   onClick={toggle(d)}
-                  className={`rounded-full px-3 py-1 text-xs font-semibold tracking-widest uppercase transition-colors disabled:opacity-40 ${
+                  className={cn(
+                    "rounded-full px-3 py-1 text-xs font-semibold tracking-widest uppercase transition-colors disabled:opacity-40",
                     active
                       ? "bg-lime/15 text-lime"
-                      : "text-cream-dim/70 hover:text-cream"
-                  }`}
+                      : "text-cream-dim/70 hover:text-cream",
+                  )}
                 >
                   {d === "high" ? "▲ Uptown" : "▼ Downtown"}
                 </button>
@@ -243,11 +215,12 @@ export function AuctionPanel({
                   type="button"
                   disabled={locked || !levelAllowed(level)}
                   onClick={() => stageLevel(level)}
-                  className={`min-h-8 rounded-lg border text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${
+                  className={cn(
+                    "min-h-8 rounded-lg border text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30",
                     active
                       ? "border-lime/60 bg-lime/15 text-lime"
-                      : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime"
-                  }`}
+                      : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime",
+                  )}
                 >
                   {level}
                 </button>
@@ -266,9 +239,12 @@ export function AuctionPanel({
                       type="button"
                       disabled={locked || !allowed(stagedCall.level, strain)}
                       onClick={() => setStaged(call)}
-                      className={`min-h-8 rounded-lg border text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30 ${selected(
-                        call,
-                      )}`}
+                      className={cn(
+                        "min-h-8 rounded-lg border text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-30",
+                        staged === call
+                          ? "border-lime/60 bg-lime/15 text-lime"
+                          : "border-cream/10 bg-cream/5 text-cream hover:border-lime/60 hover:text-lime",
+                      )}
                     >
                       {strain}
                     </button>
@@ -286,7 +262,7 @@ export function AuctionPanel({
             <div className="flex items-center justify-center gap-2">
               <span className="text-base text-cream">{bidLabel(staged)}</span>
               <Button
-                disabled={disabled}
+                disabled={isDisabled}
                 onClick={() => {
                   setStaged(null);
                   onCall(staged);
@@ -319,4 +295,4 @@ export function AuctionPanel({
       </div>
     </div>
   );
-}
+};

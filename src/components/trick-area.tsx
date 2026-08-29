@@ -6,7 +6,7 @@ import { motion } from "motion/react";
 import { cardRank, cardSuit, rankIndex } from "@/lib/game/cards";
 import type { Seat, Suit } from "@/lib/game/types";
 
-import { PlayingCard } from "./PlayingCard";
+import { PlayingCard } from "./playing-card";
 
 export type TableDir = "top" | "right" | "bottom" | "left";
 
@@ -217,7 +217,7 @@ export function TrickArea({
                   transition={{ duration: 0.85, ease: "easeIn" }}
                 >
                   <div className="absolute inset-0 backface-hidden">
-                    <PlayingCard card={card} size={eff.card} playable={false} />
+                    <PlayingCard card={card} size={eff.card} isPlayable={false} />
                   </div>
                   <div
                     className="absolute inset-0 backface-hidden"

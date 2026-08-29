@@ -12,12 +12,10 @@ type RoomState = {
   room: Room | null;
   seats: RoomSeat[];
   kickVotes: KickVote[];
-  loading: boolean;
   error: string | null;
   setRoom: (room: Room | null) => void;
   setSeats: (seats: RoomSeat[]) => void;
   setKickVotes: (votes: KickVote[]) => void;
-  setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   reset: () => void;
   claim: (seat: Seat | null) => Promise<void>;
@@ -46,16 +44,14 @@ export const useRoomStore = create<RoomState>((set) => ({
   room: null,
   seats: [],
   kickVotes: [],
-  loading: false,
   error: null,
 
   setRoom: (room) => set({ room }),
   setSeats: (seats) => set({ seats }),
   setKickVotes: (votes) => set({ kickVotes: votes }),
-  setLoading: (loading) => set({ loading }),
   setError: (error) => set({ error }),
   reset: () =>
-    set({ room: null, seats: [], kickVotes: [], loading: false, error: null }),
+    set({ room: null, seats: [], kickVotes: [], error: null }),
 
   claim: async (seat) => {
     const session = requireSession();

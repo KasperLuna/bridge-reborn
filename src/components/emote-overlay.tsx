@@ -6,16 +6,14 @@ import { AnimatePresence, motion } from "motion/react";
 import type { Seat } from "@/lib/game/types";
 import { useRoomStore } from "@/store/room-store";
 
+interface EmoteOverlayProps {
+  positions: Record<Seat, string>;
+}
+
 const VISIBLE_MS = 3000;
 const TICK_MS = 500;
 
-/** Floating emotes over seat badges, driven by the realtime `room_seats`
-    records (last_emote + emote_at). Renders inside the felt container. */
-export function EmoteOverlay({
-  positions,
-}: {
-  positions: Record<Seat, string>;
-}) {
+export const EmoteOverlay = ({ positions }: EmoteOverlayProps) => {
   const seats = useRoomStore((s) => s.seats);
   const [now, setNow] = useState(() => Date.now());
 
@@ -47,4 +45,4 @@ export function EmoteOverlay({
       })}
     </AnimatePresence>
   );
-}
+};

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/Button";
-import { Footer } from "@/components/Footer";
+import { Footer } from "@/components/footer";
 import { pb } from "@/lib/pb";
 import { rememberName, savedName } from "@/lib/remember-name";
 import type { Room } from "@/lib/types";
